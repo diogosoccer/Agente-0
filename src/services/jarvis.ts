@@ -27,7 +27,7 @@ export function parseJarvisCommand(input: string): JarvisAction[] {
     actions.push({ type: "navigate", path: "/aprovacoes" });
   } else if (text.includes("execucao") || text.includes("executor")) {
     actions.push({ type: "navigate", path: "/execucao" });
-  } else if (text.includes("tarefas")) {
+  } else if (text.includes("camera") || text.includes("cameras") || text.includes("visao") || text.includes("visão")) {\n    actions.push({ type: "navigate", path: "/visao" });\n  } else if (text.includes("equipe") || text.includes("agentes") || text.includes("multi agente")) {\n    actions.push({ type: "navigate", path: "/equipe" });\n  } else if (text.includes("tarefas")) {
     actions.push({ type: "navigate", path: "/tarefas" });
   } else if (text.includes("configuracoes") || text.includes("configurações")) {
     actions.push({ type: "navigate", path: "/configuracoes" });
