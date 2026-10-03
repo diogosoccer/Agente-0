@@ -18,12 +18,15 @@ export function JarvisConsole({ go }: Props) {
   const execute = async (input: string) => {
     setHeard(input);
     const actions = await parseJarvisCommandWithAI(input);
-    let spokenReply = "Concluído.";\n    for (const action of actions) {
+    let spokenReply = "Concluído.";
+    for (const action of actions) {
       if (action.type === "navigate") {
         go(action.path);
-        spokenReply = "Abrindo " + action.path + ".";\n        setReply(spokenReply);
+        spokenReply = "Abrindo " + action.path + ".";
+        setReply(spokenReply);
       } else if (action.type === "open_url") {
-        spokenReply = "Solicitando abertura de " + action.url;\n        setReply(spokenReply);
+        spokenReply = "Solicitando abertura de " + action.url;
+        setReply(spokenReply);
         try {
           const base = localStorage.getItem("az:executorUrl") || "http://localhost:8787";
           const r = await fetch(base.replace(/\/$/, "") + "/open", {
@@ -32,12 +35,17 @@ export function JarvisConsole({ go }: Props) {
             body: JSON.stringify({ url: action.url, approved: true }),
           });
           if (!r.ok) throw new Error("Falha ao abrir");
-          spokenReply = "Página aberta.";\n          setReply(spokenReply);
+          spokenReply = "Página aberta.";
+          setReply(spokenReply);
         } catch {
           window.open(action.url, "_blank", "noopener,noreferrer");
-          spokenReply = "Abri a página no navegador.";\n          setReply(spokenReply);
+          spokenReply = "Abri a página no navegador.";
+          setReply(spokenReply);
         }
-      } else if (action.type === "help") {\n        spokenReply = helpReply();\n        setReply(spokenReply);\n      } else if (action.type === "unknown_discovery") {
+      } else if (action.type === "help") {
+        spokenReply = helpReply();
+        setReply(spokenReply);
+      } else if (action.type === "unknown_discovery") {
         const finding = discoverUnknown();
         spokenReply = formatUnknownFinding(finding);
         setReply(spokenReply);
@@ -46,13 +54,16 @@ export function JarvisConsole({ go }: Props) {
           const base = localStorage.getItem("az:executorUrl") || "http://localhost:8787";
           const h = await workerHealth(base);
           setWorker(h.status);
-          spokenReply = "Worker " + h.status + ".";\n          setReply(spokenReply);
+          spokenReply = "Worker " + h.status + ".";
+          setReply(spokenReply);
         } catch {
           setWorker("offline");
-          spokenReply = "O Worker está offline.";\n          setReply(spokenReply);
+          spokenReply = "O Worker está offline.";
+          setReply(spokenReply);
         }
       } else if (action.type === "speak") {
-        spokenReply = action.text;\n        setReply(spokenReply);
+        spokenReply = action.text;
+        setReply(spokenReply);
       }
     }
     if (voice) speak(spokenReply);
