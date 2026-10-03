@@ -1,69 +1,73 @@
+import { understand } from "./jarvisIntent";
+import { understandWithAI } from "./jarvisIntentAI";
+
 export type JarvisAction =
   | { type: "navigate"; path: string }
   | { type: "speak"; text: string }
   | { type: "open_url"; url: string }
   | { type: "inspect"; url: string }
   | { type: "worker_health" }
-  | { type: "unknown_discovery" }\n  | { type: "help" };
+  | { type: "unknown_discovery" }
+  | { type: "help" };
 
-import { understand } from "./jarvisIntent";\n\nconst normalize = (s: string) =>
+const normalize = (s: string) =>
   s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+function actionsForIntent(intent: string): JarvisAction[] {
+  switch (intent) {
+    case "unknown_discovery": return [{ type: "unknown_discovery" }];
+    case "help": return [{ type: "help" }];
+    case "dashboard": return [{ type: "navigate", path: "/" }];
+    case "opportunities": return [{ type: "navigate", path: "/oportunidades" }];
+    case "crm": return [{ type: "navigate", path: "/clientes" }];
+    case "finance": return [{ type: "navigate", path: "/financeiro" }];
+    case "memory": return [{ type: "navigate", path: "/memoria" }];
+    case "approvals": return [{ type: "navigate", path: "/aprovacoes" }];
+    case "execution": return [{ type: "navigate", path: "/execucao" }];
+    case "vision": return [{ type: "navigate", path: "/visao" }];
+    case "agents": return [{ type: "navigate", path: "/equipe" }];
+    case "tasks": return [{ type: "navigate", path: "/tarefas" }];
+    case "settings": return [{ type: "navigate", path: "/configuracoes" }];
+    case "status": return [{ type: "worker_health" }];
+    case "agent": return [{ type: "speak", text: "Vou delegar essa tarefa para o sistema multiagente." }];
+    default: return [];
+  }
+}
 
 export function parseJarvisCommand(input: string): JarvisAction[] {
   const text = normalize(input).replace(/^hey\s+jarvis[,\s]*/i, "");
-  const actions: JarvisAction[] = [];
+  if (!text) return [];
 
-  if (!text) return actions;\n\n  const intent = understand(text);\n  if (intent?.intent === "help") { actions.push({ type: "help" }); return actions; }
-
-  if (
-    text === "me surpreenda" ||
-    text === "surpreenda-me" ||
-    text === "surpreenda me" ||
-    text.includes("jarvis unknown") ||
-    text.includes("unknown discovery")
-  ) {
-    actions.push({ type: "unknown_discovery" });
-    return actions;
-  }
-
-  if (intent?.intent === "dashboard" || text.includes("visao geral") || text.includes("dashboard") || text === "inicio") {
-    actions.push({ type: "navigate", path: "/" });
-  } else if (intent?.intent === "opportunities" || text.includes("oportunidades") || text.includes("empresas sem site")) {
-    actions.push({ type: "navigate", path: "/oportunidades" });
-  } else if (intent?.intent === "crm" || text.includes("clientes") || text.includes("crm")) {
-    actions.push({ type: "navigate", path: "/clientes" });
-  } else if (intent?.intent === "finance" || text.includes("financeiro") || text.includes("dinheiro")) {
-    actions.push({ type: "navigate", path: "/financeiro" });
-  } else if (intent?.intent === "memory" || text.includes("memoria")) {
-    actions.push({ type: "navigate", path: "/memoria" });
-  } else if (intent?.intent === "approvals" || text.includes("aprovacoes") || text.includes("aprovações")) {
-    actions.push({ type: "navigate", path: "/aprovacoes" });
-  } else if (intent?.intent === "execution" || text.includes("execucao") || text.includes("executor")) {
-    actions.push({ type: "navigate", path: "/execucao" });
-  } else if (intent?.intent === "vision" || text.includes("camera") || text.includes("cameras") || text.includes("visao") || text.includes("visão")) {
-    actions.push({ type: "navigate", path: "/visao" });
-  } else if (intent?.intent === "agents" || text.includes("equipe") || text.includes("agentes") || text.includes("multi agente")) {
-    actions.push({ type: "navigate", path: "/equipe" });
-  } else if (intent?.intent === "tasks" || text.includes("tarefas")) {
-    actions.push({ type: "navigate", path: "/tarefas" });
-  } else if (intent?.intent === "settings" || text.includes("configuracoes") || text.includes("configurações")) {
-    actions.push({ type: "navigate", path: "/configuracoes" });
+  const localIntent = understand(text);
+  if (localIntent) {
+    const actions = actionsForIntent(localIntent.intent);
+    if (actions.length) return actions;
   }
 
   const urlMatch = input.match(/https?:\/\/[^\s]+/i);
   if ((text.startsWith("abra ") || text.startsWith("abre ")) && urlMatch) {
-    actions.push({ type: "open_url", url: urlMatch[0].replace(/[.,!?]+$/, "") });
+    return [{ type: "open_url", url: urlMatch[0].replace(/[.,!?]+$/, "") }];
   }
 
   if (text.includes("status do computador") || text.includes("worker")) {
-    actions.push({ type: "worker_health" });
+    return [{ type: "worker_health" }];
   }
 
-  if (intent?.intent === "status" && actions.length === 0) actions.push({ type: "worker_health" });\n\n  if (actions.length === 0) {
-    actions.push({ type: "speak", text: "Entendi o comando, mas essa ação ainda não está conectada. Use o modo Agente para tarefas complexas." });
+  return [{ type: "speak", text: "Ainda não tenho uma ação conectada para esse pedido." }];
+}
+
+export async function parseJarvisCommandWithAI(input: string): Promise<JarvisAction[]> {
+  const text = normalize(input).replace(/^hey\s+jarvis[,\s]*/i, "");
+  if (!text) return [];
+
+  const base = localStorage.getItem("az:executorUrl") || "http://localhost:8787";
+  const ai = await understandWithAI(input, base);
+  if (ai && ai.confidence >= 0.55) {
+    const actions = actionsForIntent(ai.intent);
+    if (actions.length) return actions;
   }
 
-  return actions;
+  return parseJarvisCommand(input);
 }
 
 export function speak(text: string) {
