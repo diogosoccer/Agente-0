@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Volume2, VolumeX, Activity, ExternalLink } from "lucide-react";
 import { parseJarvisCommand, speak, workerHealth } from "../services/jarvis";
 import { discoverUnknown, formatUnknownFinding } from "../services/jarvisUnknown";
+import { suggestedPhrases, helpReply } from "../services/jarvisIntent";
 
 type Props = { go: (path: string) => void };
 
@@ -36,7 +37,7 @@ export function JarvisConsole({ go }: Props) {
           window.open(action.url, "_blank", "noopener,noreferrer");
           spokenReply = "Abri a página no navegador.";\n          setReply(spokenReply);
         }
-      } else if (action.type === "unknown_discovery") {
+      } else if (action.type === "help") {\n        spokenReply = helpReply();\n        setReply(spokenReply);\n      } else if (action.type === "unknown_discovery") {
         const finding = discoverUnknown();
         spokenReply = formatUnknownFinding(finding);
         setReply(spokenReply);
