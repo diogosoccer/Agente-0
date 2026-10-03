@@ -6,7 +6,7 @@ export type JarvisAction =
   | { type: "worker_health" }
   | { type: "unknown_discovery" }\n  | { type: "help" };
 
-import { understand, helpReply } from "./jarvisIntent";\n\nconst normalize = (s: string) =>
+import { understand } from "./jarvisIntent";\n\nconst normalize = (s: string) =>
   s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
 export function parseJarvisCommand(input: string): JarvisAction[] {
