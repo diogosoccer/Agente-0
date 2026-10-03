@@ -1,5 +1,6 @@
 import express from "express";
 import { chromium } from "playwright";
+import { mkdir } from "node:fs/promises";
 
 const app = express();
 const port = Number(process.env.PORT || 8787);
@@ -43,6 +44,7 @@ app.post("/tasks", async (req, res) => {
       text: task.type === "inspect_site" ? (await page.locator("body").innerText()).slice(0, 5000) : undefined
     };
     if (task.type === "capture_page") {
+      await mkdir("artifacts", { recursive: true });
       const file = "artifacts/page-" + task.id + ".png";
       await page.screenshot({ path: file, fullPage: true });
       result.screenshot = file;
