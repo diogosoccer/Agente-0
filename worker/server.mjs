@@ -1,6 +1,8 @@
 import express from "express";
 import { chromium } from "playwright";
 import { mkdir } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import process from "node:process";
 
 const app = express();
 const port = Number(process.env.PORT || 8787);
@@ -58,4 +60,19 @@ app.post("/tasks", async (req, res) => {
   }
 });
 
-app.listen(port, () => console.log("Agente Zero Browser Worker em http://localhost:" + port));
+
+app.post("/open", (req, res) => {
+  if (!req.body?.approved) return res.status(403).json({ error: "Ação não aprovada." });
+  try {
+    const target = new URL(req.body.url);
+    if (!["http:", "https:"].includes(target.protocol)) throw new Error("Somente URLs http(s) são permitidas.");
+    const command = process.platform === "win32" ? "cmd.exe" : process.platform === "darwin" ? "open" : "xdg-open";
+    const args = process.platform === "win32" ? ["/c", "start", "", target.toString()] : [target.toString()];
+    const child = spawn(command, args, { detached: true, stdio: "ignore", windowsHide: true });
+    child.unref();
+    res.json({ ok: true, url: target.toString() });
+  } catch (error) {
+    res.status(400).json({ ok: false, error: error instanceof Error ? error.message : "URL inválida." });
+  }
+});
+\napp.listen(port, "127.0.0.1", () => console.log("Agente Zero Browser Worker em http://127.0.0.1:" + port));
