@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Volume2, VolumeX, Activity, ExternalLink } from "lucide-react";
-import { parseJarvisCommand, speak, workerHealth } from "../services/jarvis";
+import { parseJarvisCommandWithAI, speak, workerHealth } from "../services/jarvis";
 import { discoverUnknown, formatUnknownFinding } from "../services/jarvisUnknown";
 import { suggestedPhrases, helpReply } from "../services/jarvisIntent";
 
@@ -17,7 +17,7 @@ export function JarvisConsole({ go }: Props) {
 
   const execute = async (input: string) => {
     setHeard(input);
-    const actions = parseJarvisCommand(input);
+    const actions = await parseJarvisCommandWithAI(input);
     let spokenReply = "Concluído.";\n    for (const action of actions) {
       if (action.type === "navigate") {
         go(action.path);
@@ -104,7 +104,7 @@ export function JarvisConsole({ go }: Props) {
       <div className="jarvisOrb"><Activity size={42} /></div>
       <span className="eyebrow">J.A.R.V.I.S. / DESKTOP CONTROL</span>
       <h1>{wake ? "Estou ouvindo." : "Central de comando"}</h1>
-      <p>Comandos locais, voz e conexão com o Browser Worker.</p>
+      <p>Linguagem natural, Intent Engine com IA e conexão com o Browser Worker.</p>
       <div className="jarvisActions">
         <button className="primary" onClick={listening ? stop : start}>{listening ? <MicOff size={17}/> : <Mic size={17}/>} {listening ? "Parar escuta" : "Ativar escuta"}</button>
         <button className="ghost" onClick={() => { setVoice(!voice); if (voice) window.speechSynthesis?.cancel(); }} >{voice ? <Volume2 size={17}/> : <VolumeX size={17}/>} Voz {voice ? "ligada" : "desligada"}</button>
