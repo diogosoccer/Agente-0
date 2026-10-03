@@ -3,7 +3,8 @@ export type JarvisAction =
   | { type: "speak"; text: string }
   | { type: "open_url"; url: string }
   | { type: "inspect"; url: string }
-  | { type: "worker_health" };
+  | { type: "worker_health" }
+  | { type: "unknown_discovery" };
 
 const normalize = (s: string) =>
   s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
@@ -13,6 +14,18 @@ export function parseJarvisCommand(input: string): JarvisAction[] {
   const actions: JarvisAction[] = [];
 
   if (!text) return actions;
+
+  if (
+    text === "me surpreenda" ||
+    text === "surpreenda-me" ||
+    text === "surpreenda me" ||
+    text.includes("jarvis unknown") ||
+    text.includes("unknown discovery")
+  ) {
+    actions.push({ type: "unknown_discovery" });
+    return actions;
+  }
+
   if (text.includes("visao geral") || text.includes("dashboard") || text === "inicio") {
     actions.push({ type: "navigate", path: "/" });
   } else if (text.includes("oportunidades") || text.includes("empresas sem site")) {
@@ -27,7 +40,11 @@ export function parseJarvisCommand(input: string): JarvisAction[] {
     actions.push({ type: "navigate", path: "/aprovacoes" });
   } else if (text.includes("execucao") || text.includes("executor")) {
     actions.push({ type: "navigate", path: "/execucao" });
-  } else if (text.includes("camera") || text.includes("cameras") || text.includes("visao") || text.includes("visão")) {\n    actions.push({ type: "navigate", path: "/visao" });\n  } else if (text.includes("equipe") || text.includes("agentes") || text.includes("multi agente")) {\n    actions.push({ type: "navigate", path: "/equipe" });\n  } else if (text.includes("tarefas")) {
+  } else if (text.includes("camera") || text.includes("cameras") || text.includes("visao") || text.includes("visão")) {
+    actions.push({ type: "navigate", path: "/visao" });
+  } else if (text.includes("equipe") || text.includes("agentes") || text.includes("multi agente")) {
+    actions.push({ type: "navigate", path: "/equipe" });
+  } else if (text.includes("tarefas")) {
     actions.push({ type: "navigate", path: "/tarefas" });
   } else if (text.includes("configuracoes") || text.includes("configurações")) {
     actions.push({ type: "navigate", path: "/configuracoes" });
@@ -45,6 +62,7 @@ export function parseJarvisCommand(input: string): JarvisAction[] {
   if (actions.length === 0) {
     actions.push({ type: "speak", text: "Entendi o comando, mas essa ação ainda não está conectada. Use o modo Agente para tarefas complexas." });
   }
+
   return actions;
 }
 
