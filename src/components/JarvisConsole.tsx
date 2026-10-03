@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Volume2, VolumeX, Activity, ExternalLink } from "lucide-react";
 import { parseJarvisCommand, speak, workerHealth } from "../services/jarvis";
+import { discoverUnknown, formatUnknownFinding } from "../services/jarvisUnknown";
 
 type Props = { go: (path: string) => void };
 
@@ -35,6 +36,10 @@ export function JarvisConsole({ go }: Props) {
           window.open(action.url, "_blank", "noopener,noreferrer");
           spokenReply = "Abri a página no navegador.";\n          setReply(spokenReply);
         }
+      } else if (action.type === "unknown_discovery") {
+        const finding = discoverUnknown();
+        spokenReply = formatUnknownFinding(finding);
+        setReply(spokenReply);
       } else if (action.type === "worker_health") {
         try {
           const base = localStorage.getItem("az:executorUrl") || "http://localhost:8787";
@@ -111,7 +116,7 @@ export function JarvisConsole({ go }: Props) {
     <section className="panel">
       <span className="eyebrow">EXEMPLOS</span>
       <div className="cards">
-        {["Abra o dashboard","Mostre minhas oportunidades","Abra o CRM","Mostre o financeiro","Abra as câmeras","Mostre a equipe de agentes","Mostre a memória","Qual o status do computador?"].map(x=><button className="miniCard" key={x} onClick={()=>execute(x)}><b>{x}</b><ExternalLink size={15}/></button>)}
+        {["Abra o dashboard","Mostre minhas oportunidades","Abra o CRM","Mostre o financeiro","Abra as câmeras","Mostre a equipe de agentes","Mostre a memória","JARVIS, me surpreenda","Qual o status do computador?"].map(x=><button className="miniCard" key={x} onClick={()=>execute(x)}><b>{x}</b><ExternalLink size={15}/></button>)}
       </div>
     </section>
   </div>;
