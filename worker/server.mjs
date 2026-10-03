@@ -74,6 +74,70 @@ agent = pedido complexo que deve ser delegado ao sistema multiagente.`;
   }
 });
 
+app.post("/plan", async (req, res) => {
+  const input = typeof req.body?.input === "string" ? req.body.input.trim() : "";
+  if (!input) return res.status(400).json({ error: "input obrigatório" });
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return res.status(503).json({ error: "OPENAI_API_KEY não configurada." });
+
+  const model = process.env.OPENAI_PLAN_MODEL || process.env.OPENAI_INTENT_MODEL || "gpt-6-luna";
+  const system = `Você é o Action Planner do JARVIS, um orquestrador de computador.
+Transforme o pedido em um plano executável, mas NÃO execute nada.
+Retorne SOMENTE JSON válido:
+{"plan":{"id":"string","summary":"string","intent":"string","confidence":0.0,"reason":"string","requiresApproval":false,"actions":[...]}}
+Ações permitidas:
+- {"type":"navigate","path":"/rota","label":"..."} para rotas internas do Agente Zero.
+- {"type":"worker_health","label":"..."} para verificar o computador.
+- {"type":"open_url","url":"https://...","label":"...","requiresApproval":true} para abrir URL externa.
+- {"type":"inspect_site","url":"https://...","label":"...","requiresApproval":true} para inspeção somente leitura.
+- {"type":"delegate","goal":"...","label":"..."} para tarefas complexas encaminhadas ao Multi-Agent Runtime.
+Rotas internas válidas: /, /oportunidades, /clientes, /servicos, /projetos, /financeiro, /aprovacoes, /memoria, /execucao, /visao, /equipe, /runtime, /agente, /tarefas, /automacao, /expansao, /auditoria, /configuracoes.
+Se o pedido envolver ação externa, gasto, publicação, envio, contato ou mudança irreversível, marque requiresApproval=true e use apenas uma ação compatível e segura.
+Nunca invente URLs. Se não houver informação suficiente, use delegate com o pedido original.
+Não inclua markdown, comentários ou texto fora do JSON.`;
+
+  try {
+    const apiResponse = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
+      body: JSON.stringify({
+        model,
+        input: [
+          { role: "system", content: system },
+          { role: "user", content: input }
+        ],
+        max_output_tokens: 700
+      })
+    });
+    const data = await apiResponse.json();
+    if (!apiResponse.ok) return res.status(502).json({ error: data?.error?.message || "Falha no Action Planner." });
+    const raw = typeof data.output_text === "string" ? data.output_text.trim() : "";
+    const parsed = JSON.parse(raw.replace(/^\`\`\`json\s*|\s*\`\`\`$/g, ""));
+    const plan = parsed?.plan;
+    const allowed = new Set(["navigate","worker_health","open_url","inspect_site","delegate"]);
+    if (!plan || !Array.isArray(plan.actions) || plan.actions.length > 8) {
+      return res.status(502).json({ error: "Plano inválido." });
+    }
+    for (const action of plan.actions) {
+      if (!allowed.has(action?.type)) return res.status(502).json({ error: "Ação não permitida no plano." });
+      if (action.type === "navigate" && !String(action.path || "").startsWith("/")) {
+        return res.status(502).json({ error: "Rota inválida." });
+      }
+      if ((action.type === "open_url" || action.type === "inspect_site")) {
+        const url = new URL(String(action.url || ""));
+        if (!["http:","https:"].includes(url.protocol)) throw new Error("URL inválida.");
+        action.requiresApproval = true;
+      }
+    }
+    plan.id = typeof plan.id === "string" ? plan.id : crypto.randomUUID();
+    plan.confidence = Math.max(0, Math.min(1, Number(plan.confidence) || 0));
+    plan.requiresApproval = Boolean(plan.requiresApproval) || plan.actions.some(a => a.type === "open_url" || a.type === "inspect_site");
+    res.json({ plan });
+  } catch (error) {
+    res.status(502).json({ error: error instanceof Error ? error.message : "Falha no Action Planner." });
+  }
+});
+
 app.get("/health", (_req, res) => {
   res.json({ status: busy ? "busy" : "connected", version: "0.1.0" });
 });
