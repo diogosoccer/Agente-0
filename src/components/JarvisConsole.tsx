@@ -16,12 +16,12 @@ export function JarvisConsole({ go }: Props) {
   const execute = async (input: string) => {
     setHeard(input);
     const actions = parseJarvisCommand(input);
-    for (const action of actions) {
+    let spokenReply = "Concluído.";\n    for (const action of actions) {
       if (action.type === "navigate") {
         go(action.path);
-        setReply("Abrindo " + action.path + ".");
+        spokenReply = "Abrindo " + action.path + ".";\n        setReply(spokenReply);
       } else if (action.type === "open_url") {
-        setReply("Solicitando abertura de " + action.url);
+        spokenReply = "Solicitando abertura de " + action.url;\n        setReply(spokenReply);
         try {
           const base = localStorage.getItem("az:executorUrl") || "http://localhost:8787";
           const r = await fetch(base.replace(/\/$/, "") + "/open", {
@@ -30,26 +30,26 @@ export function JarvisConsole({ go }: Props) {
             body: JSON.stringify({ url: action.url, approved: true }),
           });
           if (!r.ok) throw new Error("Falha ao abrir");
-          setReply("Página aberta.");
+          spokenReply = "Página aberta.";\n          setReply(spokenReply);
         } catch {
           window.open(action.url, "_blank", "noopener,noreferrer");
-          setReply("Abri a página no navegador.");
+          spokenReply = "Abri a página no navegador.";\n          setReply(spokenReply);
         }
       } else if (action.type === "worker_health") {
         try {
           const base = localStorage.getItem("az:executorUrl") || "http://localhost:8787";
           const h = await workerHealth(base);
           setWorker(h.status);
-          setReply("Worker " + h.status + ".");
+          spokenReply = "Worker " + h.status + ".";\n          setReply(spokenReply);
         } catch {
           setWorker("offline");
-          setReply("O Worker está offline.");
+          spokenReply = "O Worker está offline.";\n          setReply(spokenReply);
         }
       } else if (action.type === "speak") {
-        setReply(action.text);
+        spokenReply = action.text;\n        setReply(spokenReply);
       }
     }
-    if (voice) speak(actions[actions.length - 1].type === "speak" ? actions[actions.length - 1].text : (actions[actions.length - 1].type === "navigate" ? "Abrindo." : reply));
+    if (voice) speak(spokenReply);
   };
 
   const start = () => {
@@ -111,7 +111,7 @@ export function JarvisConsole({ go }: Props) {
     <section className="panel">
       <span className="eyebrow">EXEMPLOS</span>
       <div className="cards">
-        {["Abra o dashboard","Mostre minhas oportunidades","Abra o CRM","Mostre o financeiro","Mostre a memória","Qual o status do computador?"].map(x=><button className="miniCard" key={x} onClick={()=>execute(x)}><b>{x}</b><ExternalLink size={15}/></button>)}
+        {["Abra o dashboard","Mostre minhas oportunidades","Abra o CRM","Mostre o financeiro","Abra as câmeras","Mostre a equipe de agentes","Mostre a memória","Qual o status do computador?"].map(x=><button className="miniCard" key={x} onClick={()=>execute(x)}><b>{x}</b><ExternalLink size={15}/></button>)}
       </div>
     </section>
   </div>;
