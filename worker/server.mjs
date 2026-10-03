@@ -21,6 +21,57 @@ app.use((req, res, next) => {
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
+\nconst AI_INTENTS = [
+  "unknown_discovery","dashboard","opportunities","crm","finance","memory",
+  "approvals","execution","vision","agents","tasks","settings","status","help","agent"
+];
+
+app.post("/intent", async (req, res) => {
+  const input = typeof req.body?.input === "string" ? req.body.input.trim() : "";
+  if (!input) return res.status(400).json({ error: "input obrigatório" });
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return res.status(503).json({ error: "OPENAI_API_KEY não configurada." });
+
+  const model = process.env.OPENAI_INTENT_MODEL || "gpt-6-luna";
+  const system = `Você é o Intent Engine do JARVIS. Sua única função é identificar a intenção do usuário.
+Retorne SOMENTE JSON válido com: {"intent":"...","confidence":0.0,"reason":"..."}.
+Intenções permitidas: ${AI_INTENTS.join(", ")}.
+Escolha a intenção mais adequada ao significado, mesmo que o usuário use palavras diferentes.
+Não execute ações, não invente intenções e não peça confirmação.
+unknown_discovery = pedidos para surpreender, encontrar algo que o usuário não pediu ou descobrir oportunidades/inconsistências.
+help = perguntar o que JARVIS sabe fazer ou como falar com ele.
+agent = pedido complexo que deve ser delegado ao sistema multiagente.`;
+
+  try {
+    const apiResponse = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + apiKey
+      },
+      body: JSON.stringify({
+        model,
+        input: [
+          { role: "system", content: system },
+          { role: "user", content: input }
+        ],
+        max_output_tokens: 200
+      })
+    });
+    const data = await apiResponse.json();
+    if (!apiResponse.ok) return res.status(502).json({ error: data?.error?.message || "Falha no Intent Engine." });
+    const raw = typeof data.output_text === "string" ? data.output_text.trim() : "";
+    const parsed = JSON.parse(raw.replace(/^\`\`\`json\s*|\s*\`\`\`$/g, ""));
+    if (!AI_INTENTS.includes(parsed.intent)) return res.status(502).json({ error: "Intenção inválida retornada pelo modelo." });
+    res.json({
+      intent: parsed.intent,
+      confidence: Math.max(0, Math.min(1, Number(parsed.confidence) || 0)),
+      reason: typeof parsed.reason === "string" ? parsed.reason : undefined
+    });
+  } catch (error) {
+    res.status(502).json({ error: error instanceof Error ? error.message : "Falha no Intent Engine." });
+  }
+});
 
 app.get("/health", (_req, res) => {
   res.json({ status: busy ? "busy" : "connected", version: "0.1.0" });
