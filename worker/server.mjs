@@ -21,7 +21,8 @@ app.use((req, res, next) => {
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
-\nconst AI_INTENTS = [
+
+const AI_INTENTS = [
   "unknown_discovery","dashboard","opportunities","crm","finance","memory",
   "approvals","execution","vision","agents","tasks","settings","status","help","agent"
 ];
@@ -126,4 +127,5 @@ app.post("/open", (req, res) => {
     res.status(400).json({ ok: false, error: error instanceof Error ? error.message : "URL inválida." });
   }
 });
-\napp.listen(port, "127.0.0.1", () => console.log("Agente Zero Browser Worker em http://127.0.0.1:" + port));
+
+app.listen(port, "127.0.0.1", () => console.log("Agente Zero Browser Worker em http://127.0.0.1:" + port));
