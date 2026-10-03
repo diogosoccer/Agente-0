@@ -40,3 +40,93 @@
 .agentFlow b{color:#6f7e8f}
 @media(max-width:1050px){.visionGrid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:760px){.visionGrid,.agentRoster{grid-template-columns:1fr}.visionToggle{margin-left:0}.agentFlow{justify-content:flex-start}}
+
+
+/* JARVIS // CINEMATIC INTELLIGENCE INTERFACE */
+.jarvisConsole{--jcyan:#74d9ff;--jgreen:#8fffd0;--jmuted:#68798d;position:relative;gap:14px}
+.jarvisInterface{position:relative;min-height:690px;overflow:hidden;border:1px solid #1c3140;border-radius:28px;background:
+radial-gradient(circle at 50% 42%,rgba(68,185,255,.13),transparent 18%),
+radial-gradient(circle at 50% 45%,rgba(39,106,154,.10),transparent 38%),
+linear-gradient(180deg,#070d13,#05090e 70%,#071017);box-shadow:inset 0 0 80px rgba(72,170,220,.035),0 30px 100px rgba(0,0,0,.35)}
+.jarvisInterface:before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(120,210,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(120,210,255,.035) 1px,transparent 1px);background-size:38px 38px;mask-image:linear-gradient(to bottom,transparent,#000 18%,#000 80%,transparent);pointer-events:none}
+.jarvisInterface:after{content:"";position:absolute;left:5%;right:5%;top:12%;height:1px;background:linear-gradient(90deg,transparent,rgba(100,210,255,.18),transparent);box-shadow:0 390px rgba(100,210,255,.07),0 530px rgba(100,210,255,.04);pointer-events:none}
+.jarvisAtmosphere{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.45));pointer-events:none}
+.jarvisHalo{position:absolute;left:50%;top:38%;width:350px;height:350px;transform:translate(-50%,-50%);display:grid;place-items:center;filter:drop-shadow(0 0 35px rgba(83,193,255,.16))}
+.jarvisHaloRing{position:absolute;border-radius:50%;border:1px solid rgba(104,210,255,.22)}
+.ringOne{width:220px;height:220px;border-top-color:rgba(130,238,255,.75);border-bottom-color:transparent;animation:jarvisSpin 8s linear infinite}
+.ringTwo{width:285px;height:285px;border-left-color:rgba(117,255,211,.55);border-right-color:transparent;animation:jarvisSpinReverse 13s linear infinite}
+.ringThree{width:340px;height:340px;border:1px dashed rgba(92,170,214,.2);animation:jarvisSpin 24s linear infinite}
+.jarvisCoreSphere{width:112px;height:112px;border-radius:50%;display:grid;place-items:center;align-content:center;gap:7px;color:var(--jcyan);border:1px solid rgba(121,225,255,.65);background:radial-gradient(circle,rgba(82,201,255,.2),rgba(9,25,36,.72) 58%,rgba(5,10,15,.95));box-shadow:0 0 25px rgba(64,190,255,.22),inset 0 0 35px rgba(79,205,255,.1);animation:jarvisPulse 2.8s ease-in-out infinite}
+.jarvisCoreSphere span{font:700 7px "Space Grotesk";letter-spacing:.2em}
+.jarvisAwake .jarvisCoreSphere{color:#b6ffe9;border-color:rgba(143,255,208,.9);box-shadow:0 0 50px rgba(113,255,208,.35),inset 0 0 35px rgba(143,255,208,.16)}
+.planning .jarvisCoreSphere{animation:jarvisPulse .9s ease-in-out infinite}
+.jarvisIdentity{position:absolute;left:7%;bottom:174px;max-width:570px;z-index:2}
+.jarvisIdentity h1{font:600 clamp(34px,5vw,66px)/.98 "Space Grotesk";letter-spacing:-.055em;margin:10px 0 12px;color:#edf8ff}
+.jarvisIdentity p{max-width:510px;color:#74869a;font-size:12px;line-height:1.7;margin:0}
+.jarvisTelemetry{position:absolute;z-index:2;display:flex;gap:8px;flex-direction:column;font:8px "Space Grotesk";letter-spacing:.11em;color:#53677a}
+.jarvisTelemetry b{color:#91dfff;font-size:10px}
+.telemetryA{top:28px;left:30px}.telemetryB{top:28px;right:30px;text-align:right}.telemetryC{bottom:30px;right:30px;text-align:right}
+.jarvisCommandBar{position:absolute;left:7%;right:7%;bottom:88px;height:58px;border:1px solid #284151;border-radius:15px;background:rgba(6,13,19,.84);backdrop-filter:blur(20px);display:flex;align-items:center;gap:12px;padding:0 10px 0 17px;color:#6aaec9;box-shadow:0 15px 45px rgba(0,0,0,.28);z-index:3}
+.jarvisCommandBar:focus-within{border-color:#39718a;box-shadow:0 0 0 1px rgba(116,217,255,.12),0 18px 60px rgba(0,0,0,.3)}
+.jarvisCommandBar input{flex:1;background:none;border:0;outline:0;color:#dcecf5;font:12px "DM Sans"}
+.jarvisCommandBar input::placeholder{color:#506274}
+.jarvisCommandBar button{width:38px;height:38px;border:1px solid #315165;border-radius:10px;background:#0c2530;color:#8de4ff;display:grid;place-items:center;cursor:pointer}
+.jarvisCommandBar button:hover{background:#123746}
+.jarvisControls{position:absolute;left:7%;bottom:28px;display:flex;gap:8px;z-index:3}
+.jarvisControls .primary{background:#9eeed7;border-color:#9eeed7}
+.jarvisStatusStrip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.jarvisStatusStrip>div{border:1px solid #1b2b37;background:#0a1016;border-radius:11px;padding:12px;display:grid;grid-template-columns:18px 1fr;column-gap:8px;align-items:center;color:#5e91a7}
+.jarvisStatusStrip span{font:8px "Space Grotesk";letter-spacing:.1em;color:#52677a}
+.jarvisStatusStrip b{grid-column:2;font:600 10px "Space Grotesk";color:#9db2c0}
+.jarvisPlan{border:1px solid #284252;background:linear-gradient(120deg,#0a141b,#091017);border-radius:16px;padding:18px}
+.jarvisPlanHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+.jarvisPlanHeader h2{font:600 17px "Space Grotesk";margin:6px 0}
+.jarvisReason{font-size:10px;color:#708296;margin:0 0 12px}
+.planBadge{font:700 8px "Space Grotesk";letter-spacing:.1em;border:1px solid #2e5148;color:#8fffd0;border-radius:20px;padding:7px 9px;white-space:nowrap}
+.planBadge.approval{border-color:#66553a;color:#f1d38a}
+.jarvisPlanSteps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.jarvisPlanStep{display:flex;align-items:center;gap:10px;border:1px solid #1b2a35;border-radius:10px;padding:11px;background:#080e14}
+.jarvisPlanStep>span{font:700 9px "Space Grotesk";color:#56869c}
+.jarvisPlanStep div{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.jarvisPlanStep b{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jarvisPlanStep small{font-size:8px;color:#5e7081;text-transform:uppercase}
+.jarvisPlanStep svg{color:#6de2bd}
+.jarvisLowerGrid{display:grid;grid-template-columns:1fr 1.35fr;gap:14px}
+.jarvisReadout{margin:0;min-height:190px;background:linear-gradient(140deg,#0d151c,#0a1016)}
+.jarvisReadout h2{font:600 18px "Space Grotesk";margin:9px 0;line-height:1.2}
+.jarvisReadout p{font-size:11px;color:#7e90a2;line-height:1.6;max-width:600px}
+.readoutMeta{display:flex;align-items:center;gap:7px;color:#536a7a;font:8px "Space Grotesk";letter-spacing:.1em;margin-top:22px}
+.readoutMeta i{width:4px;height:4px;border-radius:50%;background:#72d8ae;box-shadow:0 0 7px #72d8ae}
+.jarvisQuick{margin:0}
+.jarvisQuick .panelhead{margin-bottom:8px}
+.jarvisQuick .panelhead h2{font-size:14px}
+.jarvisQuickRow{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;background:transparent;border:0;border-top:1px solid #17232c;color:#a9b8c4;padding:10px 2px;font:10px "DM Sans";cursor:pointer}
+.jarvisQuickRow:hover{color:#8de4ff}
+.jarvisQuickRow svg{color:#48697a}
+@keyframes jarvisSpin{to{transform:rotate(360deg)}}
+@keyframes jarvisSpinReverse{to{transform:rotate(-360deg)}}
+@keyframes jarvisPulse{0%,100%{transform:scale(.98);opacity:.82}50%{transform:scale(1.04);opacity:1}}
+@media(max-width:850px){
+.jarvisInterface{min-height:700px;border-radius:20px}
+.jarvisHalo{top:34%;transform:translate(-50%,-50%) scale(.76)}
+.jarvisIdentity{left:22px;right:22px;bottom:180px}
+.jarvisIdentity h1{font-size:39px}
+.jarvisCommandBar{left:22px;right:22px}
+.jarvisControls{left:22px;bottom:28px}
+.jarvisStatusStrip{grid-template-columns:repeat(2,1fr)}
+.jarvisPlanSteps{grid-template-columns:1fr}
+.jarvisLowerGrid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+.jarvisInterface{min-height:720px}
+.jarvisTelemetry{font-size:7px}
+.telemetryB{right:18px}.telemetryA{left:18px}.telemetryC{right:18px}
+.jarvisHalo{top:30%;transform:translate(-50%,-50%) scale(.62)}
+.jarvisIdentity{bottom:184px}
+.jarvisIdentity h1{font-size:34px}
+.jarvisIdentity p{font-size:10px}
+.jarvisCommandBar{bottom:87px;height:54px}
+.jarvisControls{bottom:25px;right:18px;left:18px;overflow:auto}
+.jarvisControls .primary,.jarvisControls .ghost{white-space:nowrap}
+.jarvisStatusStrip{grid-template-columns:1fr}
+}
