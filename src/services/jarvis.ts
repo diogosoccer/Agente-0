@@ -4,16 +4,16 @@ export type JarvisAction =
   | { type: "open_url"; url: string }
   | { type: "inspect"; url: string }
   | { type: "worker_health" }
-  | { type: "unknown_discovery" };
+  | { type: "unknown_discovery" }\n  | { type: "help" };
 
-const normalize = (s: string) =>
+import { understand, helpReply } from "./jarvisIntent";\n\nconst normalize = (s: string) =>
   s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
 export function parseJarvisCommand(input: string): JarvisAction[] {
   const text = normalize(input).replace(/^hey\s+jarvis[,\s]*/i, "");
   const actions: JarvisAction[] = [];
 
-  if (!text) return actions;
+  if (!text) return actions;\n\n  const intent = understand(text);\n  if (intent?.intent === "help") { actions.push({ type: "help" }); return actions; }
 
   if (
     text === "me surpreenda" ||
@@ -26,27 +26,27 @@ export function parseJarvisCommand(input: string): JarvisAction[] {
     return actions;
   }
 
-  if (text.includes("visao geral") || text.includes("dashboard") || text === "inicio") {
+  if (intent?.intent === "dashboard" || text.includes("visao geral") || text.includes("dashboard") || text === "inicio") {
     actions.push({ type: "navigate", path: "/" });
-  } else if (text.includes("oportunidades") || text.includes("empresas sem site")) {
+  } else if (intent?.intent === "opportunities" || text.includes("oportunidades") || text.includes("empresas sem site")) {
     actions.push({ type: "navigate", path: "/oportunidades" });
-  } else if (text.includes("clientes") || text.includes("crm")) {
+  } else if (intent?.intent === "crm" || text.includes("clientes") || text.includes("crm")) {
     actions.push({ type: "navigate", path: "/clientes" });
-  } else if (text.includes("financeiro") || text.includes("dinheiro")) {
+  } else if (intent?.intent === "finance" || text.includes("financeiro") || text.includes("dinheiro")) {
     actions.push({ type: "navigate", path: "/financeiro" });
-  } else if (text.includes("memoria")) {
+  } else if (intent?.intent === "memory" || text.includes("memoria")) {
     actions.push({ type: "navigate", path: "/memoria" });
-  } else if (text.includes("aprovacoes") || text.includes("aprovações")) {
+  } else if (intent?.intent === "approvals" || text.includes("aprovacoes") || text.includes("aprovações")) {
     actions.push({ type: "navigate", path: "/aprovacoes" });
-  } else if (text.includes("execucao") || text.includes("executor")) {
+  } else if (intent?.intent === "execution" || text.includes("execucao") || text.includes("executor")) {
     actions.push({ type: "navigate", path: "/execucao" });
-  } else if (text.includes("camera") || text.includes("cameras") || text.includes("visao") || text.includes("visão")) {
+  } else if (intent?.intent === "vision" || text.includes("camera") || text.includes("cameras") || text.includes("visao") || text.includes("visão")) {
     actions.push({ type: "navigate", path: "/visao" });
-  } else if (text.includes("equipe") || text.includes("agentes") || text.includes("multi agente")) {
+  } else if (intent?.intent === "agents" || text.includes("equipe") || text.includes("agentes") || text.includes("multi agente")) {
     actions.push({ type: "navigate", path: "/equipe" });
-  } else if (text.includes("tarefas")) {
+  } else if (intent?.intent === "tasks" || text.includes("tarefas")) {
     actions.push({ type: "navigate", path: "/tarefas" });
-  } else if (text.includes("configuracoes") || text.includes("configurações")) {
+  } else if (intent?.intent === "settings" || text.includes("configuracoes") || text.includes("configurações")) {
     actions.push({ type: "navigate", path: "/configuracoes" });
   }
 
@@ -59,7 +59,7 @@ export function parseJarvisCommand(input: string): JarvisAction[] {
     actions.push({ type: "worker_health" });
   }
 
-  if (actions.length === 0) {
+  if (intent?.intent === "status" && actions.length === 0) actions.push({ type: "worker_health" });\n\n  if (actions.length === 0) {
     actions.push({ type: "speak", text: "Entendi o comando, mas essa ação ainda não está conectada. Use o modo Agente para tarefas complexas." });
   }
 
