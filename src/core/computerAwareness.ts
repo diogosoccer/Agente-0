@@ -11,7 +11,7 @@ export type ComputerSnapshot = {
 };
 
 export function getComputerSnapshot():ComputerSnapshot {
-  const media=typeof navigator!=="undefined"&&navigator.mediaDevices;
+  const media=typeof navigator!=="undefined" ? navigator.mediaDevices : undefined;
   const recognition=typeof window!=="undefined"&&("SpeechRecognition" in window||"webkitSpeechRecognition" in window);
   return {
     online:typeof navigator!=="undefined"?navigator.onLine:true,
