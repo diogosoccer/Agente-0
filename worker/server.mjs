@@ -241,6 +241,25 @@ app.post("/research", async (req, res) => {
   }
 });
 
+app.post("/system/action", async (req, res) => {
+  const action = typeof req.body?.action === "string" ? req.body.action : "";
+  const allowed = new Set(["calculator","files","browser","settings"]);
+  if (!allowed.has(action)) return res.status(400).json({ error: "Ação de sistema não permitida." });
+  try {
+    const isWin = process.platform === "win32";
+    const isMac = process.platform === "darwin";
+    const commands = {
+      calculator: isWin ? ["calc.exe", []] : isMac ? ["open", ["-a","Calculator"]] : ["sh", ["-lc","command -v gnome-calculator >/dev/null && gnome-calculator || command -v kcalc >/dev/null && kcalc || xdg-open 'https://www.google.com/search?q=calculator'"]],
+      files: isWin ? ["explorer.exe", ["."]] : isMac ? ["open", ["."]] : ["xdg-open", ["."]],
+      browser: isWin ? ["cmd.exe", ["/c","start","","https://www.google.com"]] : isMac ? ["open", ["https://www.google.com"]] : ["xdg-open", ["https://www.google.com"]],
+      settings: isWin ? ["cmd.exe", ["/c","start","","ms-settings:"]] : isMac ? ["open", ["x-apple.systempreferences:"]] : ["sh", ["-lc","command -v gnome-control-center >/dev/null && gnome-control-center || command -v systemsettings5 >/dev/null && systemsettings5 || xdg-open 'https://www.google.com/search?q=system+settings'"]]
+    };
+    const [command,args] = commands[action];
+    const child = spawn(command,args,{detached:true,stdio:"ignore",windowsHide:true}); child.unref();
+    res.json({ok:true,action,platform:process.platform});
+  } catch(error) { res.status(500).json({ok:false,error:error instanceof Error?error.message:"Falha ao abrir aplicativo."}); }
+});
+
 app.get("/health", (_req, res) => {
   res.json({ status: busy ? "busy" : "connected", version: "0.1.0" });
 });
