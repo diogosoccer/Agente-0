@@ -25,6 +25,30 @@ app.use((req, res, next) => {
   next();
 });
 
+
+const geminiModel = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+async function generateGeminiText(system, user, maxOutputTokens) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(geminiModel) + ":generateContent", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey
+    },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: "user", parts: [{ text: user }] }],
+      generationConfig: { maxOutputTokens }
+    })
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data?.error?.message || "Falha na API Gemini.");
+  const raw = data?.candidates?.[0]?.content?.parts?.map(part => part?.text || "").join("").trim() || "";
+  if (!raw) throw new Error("Gemini não retornou texto.");
+  return raw;
+}
+
 const AI_INTENTS = [
   "unknown_discovery","dashboard","opportunities","crm","finance","memory",
   "approvals","execution","vision","agents","tasks","settings","status","help","agent"
@@ -33,10 +57,6 @@ const AI_INTENTS = [
 app.post("/intent", async (req, res) => {
   const input = typeof req.body?.input === "string" ? req.body.input.trim() : "";
   if (!input) return res.status(400).json({ error: "input obrigatório" });
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return res.status(503).json({ error: "OPENAI_API_KEY não configurada." });
-
-  const model = process.env.OPENAI_INTENT_MODEL || "gpt-6-luna";
   const system = `Você é o Intent Engine do JARVIS. Sua única função é identificar a intenção do usuário.
 Retorne SOMENTE JSON válido com: {"intent":"...","confidence":0.0,"reason":"..."}.
 Intenções permitidas: ${AI_INTENTS.join(", ")}.
@@ -47,25 +67,9 @@ help = perguntar o que JARVIS sabe fazer ou como falar com ele.
 agent = pedido complexo que deve ser delegado ao sistema multiagente.`;
 
   try {
-    const apiResponse = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + apiKey
-      },
-      body: JSON.stringify({
-        model,
-        input: [
-          { role: "system", content: system },
-          { role: "user", content: input }
-        ],
-        max_output_tokens: 200
-      })
-    });
-    const data = await apiResponse.json();
-    if (!apiResponse.ok) return res.status(502).json({ error: data?.error?.message || "Falha no Intent Engine." });
-    const raw = typeof data.output_text === "string" ? data.output_text.trim() : "";
-    const parsed = JSON.parse(raw.replace(/^\`\`\`json\s*|\s*\`\`\`$/g, ""));
+    const raw = await generateGeminiText(system, input, 200);
+    if (!raw) return res.status(503).json({ error: "GEMINI_API_KEY não configurada." });
+    const parsed = JSON.parse(raw.replace(/^\\`\\`\\`json\\s*|\\s*\\`\\`\\`$/g, ""));
     if (!AI_INTENTS.includes(parsed.intent)) return res.status(502).json({ error: "Intenção inválida retornada pelo modelo." });
     res.json({
       intent: parsed.intent,
@@ -80,17 +84,14 @@ agent = pedido complexo que deve ser delegado ao sistema multiagente.`;
 app.post("/plan", async (req, res) => {
   const input = typeof req.body?.input === "string" ? req.body.input.trim() : "";
   if (!input) return res.status(400).json({ error: "input obrigatório" });
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return res.status(503).json({ error: "OPENAI_API_KEY não configurada." });
-
-  const model = process.env.OPENAI_PLAN_MODEL || process.env.OPENAI_INTENT_MODEL || "gpt-6-luna";
   const system = `Você é o Action Planner do JARVIS, um orquestrador de computador.
 Transforme o pedido em um plano executável, mas NÃO execute nada.
 Retorne SOMENTE JSON válido:
 {"plan":{"id":"string","summary":"string","intent":"string","confidence":0.0,"reason":"string","requiresApproval":false,"actions":[...]}}
 Ações permitidas:
 - {"type":"navigate","path":"/rota","label":"..."} para rotas internas do Agente Zero.
-- {"type":"worker_health","label":"..."} para verificar o computador.\n- {"type":"research_web","query":"...","label":"..."} para pesquisa pública somente leitura no mecanismo de pesquisa local.
+- {"type":"worker_health","label":"..."} para verificar o computador.
+- {"type":"research_web","query":"...","label":"..."} para pesquisa pública somente leitura no mecanismo de pesquisa local.
 - {"type":"open_url","url":"https://...","label":"...","requiresApproval":true} para abrir URL externa.
 - {"type":"inspect_site","url":"https://...","label":"...","requiresApproval":true} para inspeção somente leitura.
 - {"type":"delegate","goal":"...","label":"..."} para tarefas complexas encaminhadas ao Multi-Agent Runtime.
@@ -100,22 +101,9 @@ Nunca invente URLs. Se não houver informação suficiente, use delegate com o p
 Não inclua markdown, comentários ou texto fora do JSON.`;
 
   try {
-    const apiResponse = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
-      body: JSON.stringify({
-        model,
-        input: [
-          { role: "system", content: system },
-          { role: "user", content: input }
-        ],
-        max_output_tokens: 700
-      })
-    });
-    const data = await apiResponse.json();
-    if (!apiResponse.ok) return res.status(502).json({ error: data?.error?.message || "Falha no Action Planner." });
-    const raw = typeof data.output_text === "string" ? data.output_text.trim() : "";
-    const parsed = JSON.parse(raw.replace(/^\`\`\`json\s*|\s*\`\`\`$/g, ""));
+    const raw = await generateGeminiText(system, input, 700);
+    if (!raw) return res.status(503).json({ error: "GEMINI_API_KEY não configurada." });
+    const parsed = JSON.parse(raw.replace(/^\\`\\`\\`json\\s*|\\s*\\`\\`\\`$/g, ""));
     const plan = parsed?.plan;
     const allowed = new Set(["navigate","worker_health","research_web","open_url","inspect_site","delegate"]);
     if (!plan || !Array.isArray(plan.actions) || plan.actions.length > 8) {
@@ -126,7 +114,7 @@ Não inclua markdown, comentários ou texto fora do JSON.`;
       if (action.type === "navigate" && !String(action.path || "").startsWith("/")) {
         return res.status(502).json({ error: "Rota inválida." });
       }
-      if ((action.type === "open_url" || action.type === "inspect_site")) {
+      if (action.type === "open_url" || action.type === "inspect_site") {
         const url = new URL(String(action.url || ""));
         if (!["http:","https:"].includes(url.protocol)) throw new Error("URL inválida.");
         action.requiresApproval = true;
