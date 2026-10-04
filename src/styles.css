@@ -149,3 +149,18 @@ linear-gradient(180deg,#070d13,#05090e 70%,#071017);box-shadow:inset 0 0 80px rg
 .screenVision{padding-bottom:32px}.screenVisionPanel{min-height:420px}.screenVisionTop{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.screenPreview{display:block;width:100%;max-height:62vh;object-fit:contain;background:#05080d;border:1px solid rgba(120,180,255,.18);border-radius:14px}.screenEmpty{height:320px;border:1px dashed rgba(120,180,255,.22);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted)}.screenEmpty b{color:var(--text)}
 
 .evolutionPage{max-width:1100px}.evolutionActions{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start}.evolutionPage details{margin-top:10px}.evolutionPage li{margin:5px 0}.evolutionPage article p{margin:7px 0}
+
+/* JARVIS OS // VOICE-FIRST CONTROL */
+.jarvisVoiceCommand{min-height:104px;border:1px solid #254654;background:rgba(5,13,18,.9);border-radius:16px;display:flex;align-items:center;gap:16px;padding:15px 17px;box-shadow:0 12px 50px rgba(0,0,0,.25);text-align:left}
+.jarvisVoiceCommand.active{border-color:#397c91;box-shadow:0 0 0 1px rgba(116,217,255,.08),0 15px 55px rgba(0,0,0,.3)}
+.jarvisVoiceCommand>b,.jarvisVoiceCommand div b{font:700 9px "Space Grotesk";letter-spacing:.12em;color:#82dfff}
+.jarvisVoiceCommand p{margin:5px 0 0;color:#536c79;font-size:9px}
+.jarvisVoiceCommand>button{margin-left:auto;border:1px solid #31576a;background:#0c2530;color:#7de1ff;border-radius:9px;padding:10px 13px;font:700 8px "Space Grotesk";letter-spacing:.08em;cursor:pointer;white-space:nowrap}
+.jarvisVoiceCommand>button:hover{background:#123746}
+.voicePulse{width:58px;height:58px;position:relative;display:grid;place-items:center;flex:none;border:1px solid #31596b;border-radius:50%;color:#73dfff;background:#081923}
+.voicePulse span{position:absolute;inset:-6px;border:1px solid rgba(116,217,255,.16);border-radius:50%;animation:voiceRing 2.2s ease-out infinite}
+.voicePulse span:nth-child(2){animation-delay:.7s}.voicePulse span:nth-child(3){animation-delay:1.4s}
+.jarvisVoiceCommand:not(.active) .voicePulse span{animation-play-state:paused;opacity:.25}
+@keyframes voiceRing{0%{transform:scale(.75);opacity:.7}100%{transform:scale(1.65);opacity:0}}
+.jHealth .voiceActive{color:#82dfff!important}
+@media(max-width:600px){.jarvisVoiceCommand{align-items:flex-start;flex-wrap:wrap}.jarvisVoiceCommand>button{margin-left:0}.voicePulse{width:50px;height:50px}}
