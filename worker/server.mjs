@@ -66,6 +66,13 @@ app.post("/intent",async(req,res)=>{
   if(!input)return res.status(400).json({error:"input obrigatório"});
   const local=localIntent(input); if(local)return res.json(local);
   try{
+    const localRaw=await generateBestLocalText("Você é o Intent Engine do JARVIS. Retorne somente JSON com intent, confidence e reason. Intenções: "+AI_INTENTS.join(", "),input,200);
+    if(localRaw){
+      try {
+        const parsed=JSON.parse(localRaw.replace(/^\`\`\`json\s*|\s*\`\`\`$/g,""));
+        if(AI_INTENTS.includes(parsed.intent)) return res.json({intent:parsed.intent,confidence:Math.max(0,Math.min(1,Number(parsed.confidence)||0)),reason:typeof parsed.reason==="string"?parsed.reason:"IA local"});
+      } catch {}
+    }
     const raw=await generateGeminiText("Você é o Intent Engine do JARVIS. Retorne somente JSON com intent, confidence e reason. Intenções: "+AI_INTENTS.join(", "),input,200);
     if(raw){
       const parsed=JSON.parse(raw.replace(/^\`\`\`json\s*|\s*\`\`\`$/g,""));
@@ -78,6 +85,19 @@ app.post("/plan",async(req,res)=>{
   const input=typeof req.body?.input==="string"?req.body.input.trim():"";
   if(!input)return res.status(400).json({error:"input obrigatório"});
   try{
+    const localRaw=await generateBestLocalText("Você é o Action Planner do JARVIS. Retorne JSON com plan e ações permitidas: navigate, worker_health, research_web, open_url, inspect_site, delegate. Seja conservador: ações externas exigem aprovação.",input,700);
+    if(localRaw){
+      try {
+        const parsed=JSON.parse(localRaw.replace(/^\`\`\`json\s*|\s*\`\`\`$/g,"")); const plan=parsed?.plan;
+        const allowed=new Set(["navigate","worker_health","research_web","open_url","inspect_site","delegate"]);
+        if(plan&&Array.isArray(plan.actions)&&plan.actions.length<=8&&plan.actions.every(a=>allowed.has(a?.type))){
+          for(const action of plan.actions) if(action.type==="open_url"||action.type==="inspect_site"){const url=new URL(String(action.url||""));if(!["http:","https:"].includes(url.protocol))throw new Error("URL inválida.");action.requiresApproval=true;}
+          plan.id=typeof plan.id==="string"?plan.id:randomUUID(); plan.confidence=Math.max(0,Math.min(1,Number(plan.confidence)||0));
+          plan.requiresApproval=Boolean(plan.requiresApproval)||plan.actions.some(a=>a.type==="open_url"||a.type==="inspect_site");
+          return res.json({plan});
+        }
+      } catch {}
+    }
     const raw=await generateGeminiText("Você é o Action Planner do JARVIS. Retorne JSON com plan e ações permitidas: navigate, worker_health, research_web, open_url, inspect_site, delegate.",input,700);
     if(raw){
       const parsed=JSON.parse(raw.replace(/^\`\`\`json\s*|\s*\`\`\`$/g,"")); const plan=parsed?.plan;
