@@ -27,108 +27,68 @@ app.use((req, res, next) => {
 
 
 const geminiModel = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+
+// Gemini é opcional: o JARVIS possui fallback local.
 async function generateGeminiText(system, user, maxOutputTokens) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
   const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(geminiModel) + ":generateContent", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": apiKey
-    },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: system }] },
-      contents: [{ role: "user", parts: [{ text: user }] }],
-      generationConfig: { maxOutputTokens }
-    })
+    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+    body: JSON.stringify({ systemInstruction:{parts:[{text:system}]}, contents:[{role:"user",parts:[{text:user}]}], generationConfig:{maxOutputTokens} })
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data?.error?.message || "Falha na API Gemini.");
-  const raw = data?.candidates?.[0]?.content?.parts?.map(part => part?.text || "").join("").trim() || "";
-  if (!raw) throw new Error("Gemini não retornou texto.");
-  return raw;
+  const data=await response.json();
+  if(!response.ok) throw new Error(data?.error?.message || "Falha na API Gemini.");
+  return data?.candidates?.[0]?.content?.parts?.map(part=>part?.text||"").join("").trim() || null;
 }
-
-const AI_INTENTS = [
-  "unknown_discovery","dashboard","opportunities","crm","finance","memory",
-  "approvals","execution","vision","agents","tasks","settings","status","help","agent"
-];
-
-app.post("/intent", async (req, res) => {
-  const input = typeof req.body?.input === "string" ? req.body.input.trim() : "";
-  if (!input) return res.status(400).json({ error: "input obrigatório" });
-  const system = `Você é o Intent Engine do JARVIS. Sua única função é identificar a intenção do usuário.
-Retorne SOMENTE JSON válido com: {"intent":"...","confidence":0.0,"reason":"..."}.
-Intenções permitidas: ${AI_INTENTS.join(", ")}.
-Escolha a intenção mais adequada ao significado, mesmo que o usuário use palavras diferentes.
-Não execute ações, não invente intenções e não peça confirmação.
-unknown_discovery = pedidos para surpreender, encontrar algo que o usuário não pediu ou descobrir oportunidades/inconsistências.
-help = perguntar o que JARVIS sabe fazer ou como falar com ele.
-agent = pedido complexo que deve ser delegado ao sistema multiagente.`;
-
-  try {
-    const raw = await generateGeminiText(system, input, 200);
-    if (!raw) return res.status(503).json({ error: "GEMINI_API_KEY não configurada." });
-    const parsed = JSON.parse(raw.replace(/^\\`\\`\\`json\\s*|\\s*\\`\\`\\`$/g, ""));
-    if (!AI_INTENTS.includes(parsed.intent)) return res.status(502).json({ error: "Intenção inválida retornada pelo modelo." });
-    res.json({
-      intent: parsed.intent,
-      confidence: Math.max(0, Math.min(1, Number(parsed.confidence) || 0)),
-      reason: typeof parsed.reason === "string" ? parsed.reason : undefined
-    });
-  } catch (error) {
-    res.status(502).json({ error: error instanceof Error ? error.message : "Falha no Intent Engine." });
-  }
-});
-
-app.post("/plan", async (req, res) => {
-  const input = typeof req.body?.input === "string" ? req.body.input.trim() : "";
-  if (!input) return res.status(400).json({ error: "input obrigatório" });
-  const system = `Você é o Action Planner do JARVIS, um orquestrador de computador.
-Transforme o pedido em um plano executável, mas NÃO execute nada.
-Retorne SOMENTE JSON válido:
-{"plan":{"id":"string","summary":"string","intent":"string","confidence":0.0,"reason":"string","requiresApproval":false,"actions":[...]}}
-Ações permitidas:
-- {"type":"navigate","path":"/rota","label":"..."} para rotas internas do Agente Zero.
-- {"type":"worker_health","label":"..."} para verificar o computador.
-- {"type":"research_web","query":"...","label":"..."} para pesquisa pública somente leitura no mecanismo de pesquisa local.
-- {"type":"open_url","url":"https://...","label":"...","requiresApproval":true} para abrir URL externa.
-- {"type":"inspect_site","url":"https://...","label":"...","requiresApproval":true} para inspeção somente leitura.
-- {"type":"delegate","goal":"...","label":"..."} para tarefas complexas encaminhadas ao Multi-Agent Runtime.
-Rotas internas válidas: /, /oportunidades, /clientes, /servicos, /projetos, /financeiro, /aprovacoes, /memoria, /execucao, /visao, /equipe, /runtime, /agente, /tarefas, /automacao, /expansao, /auditoria, /configuracoes.
-Se o pedido envolver ação externa, gasto, publicação, envio, contato ou mudança irreversível, marque requiresApproval=true e use apenas uma ação compatível e segura.
-Nunca invente URLs. Se não houver informação suficiente, use delegate com o pedido original.
-Não inclua markdown, comentários ou texto fora do JSON.`;
-
-  try {
-    const raw = await generateGeminiText(system, input, 700);
-    if (!raw) return res.status(503).json({ error: "GEMINI_API_KEY não configurada." });
-    const parsed = JSON.parse(raw.replace(/^\\`\\`\\`json\\s*|\\s*\\`\\`\\`$/g, ""));
-    const plan = parsed?.plan;
-    const allowed = new Set(["navigate","worker_health","research_web","open_url","inspect_site","delegate"]);
-    if (!plan || !Array.isArray(plan.actions) || plan.actions.length > 8) {
-      return res.status(502).json({ error: "Plano inválido." });
+const AI_INTENTS=["unknown_discovery","dashboard","opportunities","crm","finance","memory","approvals","execution","vision","agents","tasks","settings","status","help","agent"];
+function localIntent(input){
+  const text=String(input||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+  const rules=[
+    ["unknown_discovery",["me surpreenda","surpreenda","encontre algo","o que eu nao estou vendo"]],
+    ["opportunities",["oportunidades","empresas sem site","procure empresas","procure vendas","encontre clientes","ache oportunidades"]],
+    ["crm",["crm","clientes","meus clientes"]],["finance",["financeiro","dinheiro","saldo","receita","despesas","lucro"]],
+    ["memory",["memoria","o que voce lembra","lembretes"]],["approvals",["aprovacoes","pendencias","minha aprovacao"]],
+    ["execution",["executor","navegador","executa","abra no computador","controle do computador"]],
+    ["vision",["camera","cameras","visao","veja"]],["agents",["equipe","agentes","multi agente"]],
+    ["tasks",["tarefas","pendentes","o que falta fazer"]],["settings",["configuracoes","configuracao","preferencias"]],
+    ["status",["status do computador","worker","esta tudo funcionando","sistema esta funcionando"]],
+    ["help",["o que voce sabe fazer","como posso falar","quais comandos","me ensine","ajuda"]]
+  ];
+  for(const [intent,keys] of rules) if(keys.some(key=>text.includes(key))) return {intent,confidence:0.88,reason:"Intenção identificada pelo motor local."};
+  return null;
+}
+app.post("/intent",async(req,res)=>{
+  const input=typeof req.body?.input==="string"?req.body.input.trim():"";
+  if(!input)return res.status(400).json({error:"input obrigatório"});
+  const local=localIntent(input); if(local)return res.json(local);
+  try{
+    const raw=await generateGeminiText("Você é o Intent Engine do JARVIS. Retorne somente JSON com intent, confidence e reason. Intenções: "+AI_INTENTS.join(", "),input,200);
+    if(raw){
+      const parsed=JSON.parse(raw.replace(/^\`\`\`json\s*|\s*\`\`\`$/g,""));
+      if(AI_INTENTS.includes(parsed.intent)) return res.json({intent:parsed.intent,confidence:Math.max(0,Math.min(1,Number(parsed.confidence)||0)),reason:typeof parsed.reason==="string"?parsed.reason:undefined});
     }
-    for (const action of plan.actions) {
-      if (!allowed.has(action?.type)) return res.status(502).json({ error: "Ação não permitida no plano." });
-      if (action.type === "navigate" && !String(action.path || "").startsWith("/")) {
-        return res.status(502).json({ error: "Rota inválida." });
-      }
-      if (action.type === "open_url" || action.type === "inspect_site") {
-        const url = new URL(String(action.url || ""));
-        if (!["http:","https:"].includes(url.protocol)) throw new Error("URL inválida.");
-        action.requiresApproval = true;
+  }catch{}
+  res.json({intent:"unknown_discovery",confidence:0.35,reason:"Nenhuma IA externa disponível; fallback local ativo."});
+});
+app.post("/plan",async(req,res)=>{
+  const input=typeof req.body?.input==="string"?req.body.input.trim():"";
+  if(!input)return res.status(400).json({error:"input obrigatório"});
+  try{
+    const raw=await generateGeminiText("Você é o Action Planner do JARVIS. Retorne JSON com plan e ações permitidas: navigate, worker_health, research_web, open_url, inspect_site, delegate.",input,700);
+    if(raw){
+      const parsed=JSON.parse(raw.replace(/^\`\`\`json\s*|\s*\`\`\`$/g,"")); const plan=parsed?.plan;
+      const allowed=new Set(["navigate","worker_health","research_web","open_url","inspect_site","delegate"]);
+      if(plan&&Array.isArray(plan.actions)&&plan.actions.length<=8&&plan.actions.every(a=>allowed.has(a?.type))){
+        for(const action of plan.actions) if(action.type==="open_url"||action.type==="inspect_site"){const url=new URL(String(action.url||""));if(!["http:","https:"].includes(url.protocol))throw new Error("URL inválida.");action.requiresApproval=true;}
+        plan.id=typeof plan.id==="string"?plan.id:randomUUID(); plan.confidence=Math.max(0,Math.min(1,Number(plan.confidence)||0));
+        plan.requiresApproval=Boolean(plan.requiresApproval)||plan.actions.some(a=>a.type==="open_url"||a.type==="inspect_site");
+        return res.json({plan});
       }
     }
-    plan.id = typeof plan.id === "string" ? plan.id : randomUUID();
-    plan.confidence = Math.max(0, Math.min(1, Number(plan.confidence) || 0));
-    plan.requiresApproval = Boolean(plan.requiresApproval) || plan.actions.some(a => a.type === "open_url" || a.type === "inspect_site");
-    res.json({ plan });
-  } catch (error) {
-    res.status(502).json({ error: error instanceof Error ? error.message : "Falha no Action Planner." });
-  }
+  }catch{}
+  res.json({plan:{id:randomUUID(),summary:input,intent:"agent",confidence:0.35,reason:"Fallback local ativo.",requiresApproval:false,actions:[{type:"delegate",goal:input,label:"Delegar tarefa ao JARVIS"}]}});
 });
-
 app.post("/music/search", async (req, res) => {
   const query = typeof req.body?.query === "string" ? req.body.query.trim() : "";
   if (!query) return res.status(400).json({ error: "query obrigatória" });
