@@ -141,6 +141,31 @@ Não inclua markdown, comentários ou texto fora do JSON.`;
   }
 });
 
+app.post("/research", async (req, res) => {
+  const query = typeof req.body?.query === "string" ? req.body.query.trim() : "";
+  if (!query) return res.status(400).json({ error: "query obrigatória" });
+  if (query.length > 300) return res.status(400).json({ error: "query muito longa" });
+  try {
+    busy = true;
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    const encoded = encodeURIComponent(query);
+    const target = `https://www.bing.com/search?q=${encoded}`;
+    await page.goto(target, { waitUntil: "domcontentloaded", timeout: 20000 });
+    const results = await page.locator("li.b_algo").evaluateAll(nodes => nodes.slice(0, 8).map(node => ({
+      title: node.querySelector("h2")?.textContent?.trim() || "",
+      url: node.querySelector("h2 a")?.href || "",
+      snippet: node.querySelector(".b_caption p")?.textContent?.trim() || ""
+    })).filter(x => x.title && x.url));
+    await browser.close();
+    res.json({ ok: true, query, results });
+  } catch (error) {
+    res.status(502).json({ ok: false, error: error instanceof Error ? error.message : "Falha na pesquisa." });
+  } finally {
+    busy = false;
+  }
+});
+
 app.get("/health", (_req, res) => {
   res.json({ status: busy ? "busy" : "connected", version: "0.1.0" });
 });
