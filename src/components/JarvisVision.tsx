@@ -4,7 +4,7 @@ import{attachStream,listCameras,openCamera,requestCameraPermission,stopCamera,ty
 
 export function JarvisVision(){
  const[devices,setDevices]=useState<MediaDeviceInfo[]>([]);
- const[slots,setSlots]=useState<CameraSlot[]>([]);
+ const[slots,setSlots]=useState<Array<CameraSlot|undefined>>([]);
  const[identity,setIdentity]=useState(false);
  const[message,setMessage]=useState("Câmeras desligadas");
  const refs=useRef<Record<string,HTMLVideoElement|null>>({});
@@ -14,7 +14,7 @@ export function JarvisVision(){
    try{await requestCameraPermission(); const ds=await listCameras(); setDevices(ds); setMessage(ds.length?ds.length+" câmera(s) encontrada(s).":"Nenhuma câmera encontrada.");}
    catch(e){setMessage("Permissão de câmera não concedida.");}
  };
- useEffect(()=>{void listCameras().then(setDevices).catch(()=>{});return()=>slots.forEach(s=>stopCamera(s.stream));},[]);
+ useEffect(()=>{void listCameras().then(setDevices).catch(()=>{});return()=>slots.forEach(s=>{if(s)stopCamera(s.stream)});},[]);
 
  const activate=async(deviceId:string,index:number)=>{
    try{
@@ -28,9 +28,9 @@ export function JarvisVision(){
  };
  const deactivate=(index:number)=>{
    const old=slots[index];if(old)stopCamera(old.stream);
-   setSlots(prev=>{const next=[...prev];next[index]=undefined as never;return next;});
+   setSlots(prev=>{const next=[...prev];next[index]=undefined;return next;});
  };
- const clear=()=>{slots.forEach(s=>stopCamera(s.stream));setSlots([]);setMessage("Todas as câmeras foram desligadas.");};
+ const clear=()=>{slots.forEach(s=>{if(s)stopCamera(s.stream)});setSlots([]);setMessage("Todas as câmeras foram desligadas.");};
 
  return <section className="visionPanel">
    <div className="panelhead"><div><span className="eyebrow">JARVIS VISION</span><h2>Central de câmeras</h2></div><Video size={18}/></div>
@@ -53,7 +53,7 @@ export function JarvisVision(){
       </div>
     })}
    </div>
-   <div className="visionFooter"><span>{message}</span><span>{identity?"Identidade: ativada localmente":"Identidade: desativada"}</span><span>Slots: {slots.filter(Boolean).length}/5</span></div>
+   <div className="visionFooter"><span>{message}</span><span>{identity?"Identidade: ativada localmente":"Identidade: desativada"}</span><span>Slots: {slots.filter((slot): slot is CameraSlot => Boolean(slot)).length}/5</span></div>
    <small className="visionDisclaimer">{caps.identityVerificationOptIn?"A verificação facial completa pode ser conectada a um modelo local depois do consentimento. Esta camada não armazena imagens do rosto.":""}</small>
  </section>
 }
