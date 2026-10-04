@@ -30,14 +30,19 @@ function taskFinished(task?: AgentTask) {
   return Boolean(task && (task.status === "done" || task.status === "error"));
 }
 
-async function waitForTask(taskId: string, timeoutMs = 45000): Promise<AgentTask> {
+async function waitForMissionTask(rootTaskId: string, timeoutMs = 45000): Promise<AgentTask> {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
-    const task = agentOrchestrator.list().find(item => item.id === taskId);
-    if (taskFinished(task)) return task!;
+    const tasks = agentOrchestrator.list();
+    const root = tasks.find(item => item.id === rootTaskId);
+    if (root?.status === "error") return root;
+
+    const specialist = tasks.find(item => item.parentId === rootTaskId);
+    if (taskFinished(specialist)) return specialist!;
+
     await sleep(250);
   }
-  throw new Error("Tempo limite aguardando a execução do agente.");
+  throw new Error("Tempo limite aguardando a execução do especialista.");
 }
 
 export class JarvisCore {
@@ -74,7 +79,7 @@ export class JarvisCore {
           mission.updatedAt = Date.now();
           persist(mission);
 
-          const finished = await waitForTask(task.id);
+          const finished = await waitForMissionTask(task.id);
           if (finished.status === "error") throw new Error(finished.error || "Agente falhou.");
 
           mission.status = "verifying";
