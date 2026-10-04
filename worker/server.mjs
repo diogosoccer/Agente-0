@@ -261,56 +261,53 @@ app.post("/system/action", async (req, res) => {
 });
 
 const ebookTopics = [
-  "produtividade para estudantes",
-  "organização pessoal",
-  "inteligência artificial para iniciantes",
-  "hábitos de estudo",
-  "criatividade e resolução de problemas",
-  "educação financeira básica"
+  "produtividade para estudantes","organização pessoal","inteligência artificial para iniciantes",
+  "hábitos de estudo","criatividade e resolução de problemas","educação financeira básica",
+  "pensamento crítico e tomada de decisão","como aprender mais rápido com métodos simples"
 ];
-let ebookState = { lastRun: null, nextRun: null, lastFile: null, lastTopic: null };
-
-function ebookSlug(value) {
-  return value.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 70);
+const ebookStateFile = "artifacts/ebooks/.factory-state.json";
+let ebookState = { lastRun:null, nextRun:null, lastFile:null, lastTopic:null, lastQuality:null, history:[] };
+async function loadEbookState(){ try{ ebookState=JSON.parse(await readFile(ebookStateFile,"utf8")); }catch{} }
+async function saveEbookState(){ await mkdir("artifacts/ebooks",{recursive:true}); await writeFile(ebookStateFile,JSON.stringify(ebookState,null,2),"utf8"); }
+function ebookSlug(value){ return value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,70); }
+function qualityScore(sources,chapters){ return Math.min(100,Math.min(40,sources.length*7)+Math.min(35,chapters.length*4)+25); }
+async function researchEbookTopic(topic){
+  const browser=await chromium.launch({headless:true}); const page=await browser.newPage();
+  await page.goto("https://www.bing.com/search?q="+encodeURIComponent(topic+" guia fundamentos estudos pesquisas"),{waitUntil:"domcontentloaded",timeout:20000});
+  const sources=await page.locator("li.b_algo").evaluateAll(nodes=>nodes.slice(0,8).map(node=>({
+    title:node.querySelector("h2")?.textContent?.trim()||"",url:node.querySelector("h2 a")?.href||"",
+    snippet:node.querySelector(".b_caption p")?.textContent?.trim()||""
+  })).filter(x=>x.title&&x.url)); await browser.close(); return sources;
 }
-
-async function generateEbook(topic) {
-  busy = true;
-  try {
-    const browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage();
-    const query = encodeURIComponent(topic + " guia dicas fundamentos");
-    await page.goto("https://www.bing.com/search?q=" + query, { waitUntil: "domcontentloaded", timeout: 20000 });
-    const sources = await page.locator("li.b_algo").evaluateAll(nodes => nodes.slice(0, 6).map(node => ({
-      title: node.querySelector("h2")?.textContent?.trim() || "",
-      url: node.querySelector("h2 a")?.href || "",
-      snippet: node.querySelector(".b_caption p")?.textContent?.trim() || ""
-    })).filter(x => x.title && x.url));
-    await browser.close();
-
-    const date = new Date().toISOString().slice(0, 10);
-    const title = "Guia prático: " + topic.charAt(0).toUpperCase() + topic.slice(1);
-    const chapters = [
-      ["Introdução", "Este guia apresenta conceitos fundamentais sobre " + topic + " e transforma o tema em passos práticos."],
-      ["O que realmente importa", sources[0]?.snippet || "Comece pelos fundamentos, defina um objetivo claro e escolha poucas ações de alto impacto."],
-      ["Passo 1 — Defina seu ponto de partida", "Liste o que você já sabe, o que precisa aprender e qual resultado pretende alcançar. Evite tentar resolver tudo ao mesmo tempo."],
-      ["Passo 2 — Monte um sistema simples", "Escolha uma rotina curta e repetível. Registre o progresso e faça ajustes quando uma estratégia não funcionar."],
-      ["Passo 3 — Transforme conhecimento em prática", "Separe pequenos exercícios ou ações concretas e revise os resultados regularmente."],
-      ["Erros comuns", "Evite excesso de ferramentas, metas vagas, copiar métodos sem entender o contexto e abandonar o processo depois dos primeiros obstáculos."],
-      ["Plano de 7 dias", "Dia 1: definir objetivo. Dia 2: organizar recursos. Dia 3: primeira prática. Dia 4: revisar. Dia 5: repetir. Dia 6: melhorar. Dia 7: avaliar e decidir o próximo ciclo."],
-      ["Conclusão", "O valor deste material está em aplicar uma ideia por vez, observar o resultado e melhorar continuamente."]
+async function generateEbook(topic){
+  busy=true;
+  try{
+    const sources=await researchEbookTopic(topic), date=new Date().toISOString().slice(0,10);
+    const title="Guia prático: "+topic.charAt(0).toUpperCase()+topic.slice(1);
+    const chapters=[
+      ["Introdução","Este material transforma conceitos fundamentais de "+topic+" em um roteiro curto, aplicável e revisável."],
+      ["O que realmente importa",sources[0]?.snippet||"Comece pelos fundamentos, defina um objetivo observável e reduza a quantidade de ações simultâneas."],
+      ["Passo 1 — Defina seu ponto de partida","Registre o que você já sabe, o resultado desejado e a principal dificuldade que está impedindo o avanço."],
+      ["Passo 2 — Monte um sistema simples","Escolha uma rotina pequena, repetível e fácil de medir. Um sistema sustentável vale mais que uma explosão de motivação."],
+      ["Passo 3 — Transforme conhecimento em prática","Converta cada conceito em uma ação, exercício, pergunta ou teste. Registre o que funcionou e o que precisa ser ajustado."],
+      ["Erros comuns","Evite excesso de ferramentas, metas vagas, copiar métodos sem contexto, depender apenas de motivação e não revisar resultados."],
+      ["Plano de 7 dias","Dia 1: objetivo. Dia 2: diagnóstico. Dia 3: primeira prática. Dia 4: revisão. Dia 5: repetição. Dia 6: melhoria. Dia 7: avaliação e próximo ciclo."],
+      ["Checklist final","Objetivo definido; rotina escolhida; primeira ação executada; resultado registrado; principal erro identificado; próximo passo definido."],
+      ["Conclusão","O valor do guia aparece quando uma ideia é aplicada, medida e melhorada. Use este material como ponto de partida, não como promessa de resultado."]
     ];
-    const md = "# " + title + "\n\n";
-    const body = chapters.map(([h,p]) => "## " + h + "\n\n" + p).join("\n\n");
-    const sourceBlock = "\n\n## Fontes para aprofundamento\n\n" + sources.map(s => "- [" + s.title.replace(/\\[/g,"(").replace(/\\]/g,")") + "](" + s.url + ") — " + s.snippet).join("\n");
-    await mkdir("artifacts/ebooks", { recursive: true });
-    const file = "artifacts/ebooks/" + date + "-" + ebookSlug(topic) + ".md";
-    await writeFile(file, md + body + sourceBlock, "utf8");
-    ebookState = { lastRun: new Date().toISOString(), nextRun: new Date(Date.now()+86400000).toISOString(), lastFile: file, lastTopic: topic };
-    return { ok: true, title, topic, file, sources: sources.length, state: ebookState };
-  } finally { busy = false; }
+    const score=qualityScore(sources,chapters);
+    const body=chapters.map(([h,p])=>"## "+h+"\n\n"+p).join("\n\n");
+    const sourceBlock="\n\n## Fontes para aprofundamento\n\n"+sources.map(s=>"- ["+s.title.replace(/\[/g,"(").replace(/\]/g,")")+"]("+s.url+") — "+s.snippet).join("\n");
+    const meta="\n\n---\n**Metadados de produção**\n- Tema: "+topic+"\n- Fontes pesquisadas: "+sources.length+"\n- Score editorial automático: "+score+"/100\n- Estado: RASCUNHO — revisão humana necessária\n";
+    const md="# "+title+"\n\n"+body+sourceBlock+meta;
+    await mkdir("artifacts/ebooks",{recursive:true});
+    const file="artifacts/ebooks/"+date+"-"+ebookSlug(topic)+".md"; await writeFile(file,md,"utf8");
+    const now=new Date(), next=new Date(now.getTime()+86400000);
+    ebookState={lastRun:now.toISOString(),nextRun:next.toISOString(),lastFile:file,lastTopic:topic,lastQuality:score,
+      history:[{date:now.toISOString(),topic,file,quality:score,sources:sources.length},...(ebookState.history||[])].slice(0,30)};
+    await saveEbookState(); return {ok:true,title,topic,file,sources:sources.length,quality:score,state:ebookState};
+  }finally{busy=false;}
 }
-
 app.post("/ebook/generate", async (req, res) => {
   const topic = typeof req.body?.topic === "string" && req.body.topic.trim() ? req.body.topic.trim().slice(0, 120) : ebookTopics[new Date().getDate() % ebookTopics.length];
   if (busy) return res.status(409).json({ ok: false, error: "Worker ocupado." });
@@ -318,13 +315,41 @@ app.post("/ebook/generate", async (req, res) => {
   catch (error) { res.status(502).json({ ok: false, error: error instanceof Error ? error.message : "Falha ao gerar e-book." }); }
 });
 
-app.get("/ebook/status", (_req, res) => res.json({ ok: true, ...ebookState, topics: ebookTopics }));
+app.get("/ebook/status", async (_req,res)=>{ await loadEbookState(); res.json({ok:true,...ebookState,topics:ebookTopics,workerOnline:true}); });
+loadEbookState().catch(()=>{});
 setInterval(async () => {
   if (busy) return;
   const topic = ebookTopics[new Date().getDate() % ebookTopics.length];
   try { await generateEbook(topic); }
   catch (error) { console.error("Daily ebook factory:", error instanceof Error ? error.message : error); }
 }, 24 * 60 * 60 * 1000);
+
+app.post("/opportunities/deep", async (req, res) => {
+  const candidate = req.body?.candidate && typeof req.body.candidate === "object" ? req.body.candidate : null;
+  if (!candidate?.name || !candidate?.location) return res.status(400).json({ ok:false, error:"candidate com name e location é obrigatório." });
+  const query = String(candidate.name) + " " + String(candidate.location);
+  try {
+    busy = true;
+    const browser = await chromium.launch({ headless:true });
+    const page = await browser.newPage();
+    await page.goto("https://www.bing.com/search?q=" + encodeURIComponent(query), { waitUntil:"domcontentloaded", timeout:20000 });
+    const results = await page.locator("li.b_algo").evaluateAll(nodes => nodes.slice(0,10).map(node => ({
+      title: node.querySelector("h2")?.textContent?.trim() || "",
+      url: node.querySelector("h2 a")?.href || "",
+      snippet: node.querySelector(".b_caption p")?.textContent?.trim() || ""
+    })).filter(x => x.title && x.url));
+    await browser.close();
+    const domains = results.map(x => { try { return new URL(x.url).hostname.replace(/^www\./,""); } catch { return ""; } }).filter(Boolean);
+    const ownSite = domains.find(d => !/facebook|instagram|google|tripadvisor|yelp|linkedin|telelistas|guiamais|solutudo/i.test(d)) || null;
+    const social = results.filter(x => /facebook|instagram|linkedin/i.test(x.url)).map(x=>x.url).slice(0,4);
+    const evidence = results.slice(0,6).map(x => ({ title:x.title, url:x.url, snippet:x.snippet }));
+    const qualitySignals = { ownSiteFound:Boolean(ownSite), socialPresence:social.length>0, searchEvidence:evidence.length, directoryHeavy:evidence.filter(x=>/tripadvisor|yelp|telelistas|guiamais|solutudo/i.test(x.url)).length };
+    const score = Math.max(0, Math.min(100, (qualitySignals.ownSiteFound ? 25 : 72) + (qualitySignals.socialPresence ? 8 : 0) + Math.min(10, qualitySignals.directoryHeavy*2)));
+    res.json({ ok:true, candidate, query, score, ownSite, social, evidence, qualitySignals,
+      recommendation: qualitySignals.ownSiteFound ? "Auditar o site existente antes de propor qualquer melhoria." : "Há sinal de oportunidade digital, mas a ausência de domínio próprio precisa ser confirmada manualmente antes de contato." });
+  } catch(error) { res.status(502).json({ok:false,error:error instanceof Error?error.message:"Falha na auditoria."}); }
+  finally { busy=false; }
+});
 
 app.get("/health", (_req, res) => {
   res.json({ status: busy ? "busy" : "connected", version: "0.1.0" });
