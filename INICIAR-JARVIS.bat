@@ -32,7 +32,7 @@ if errorlevel 1 (
   echo.
 ) else (
   echo [OK] Ollama detectado.
-  echo Verificando modelo local Qwen3.5 4B...
+  echo Verificando modelo local Qwen3.5 9B (fallback 4B)...
   ollama list | findstr /I "qwen3.5:4b" >nul 2>nul
   if errorlevel 1 (
     echo [INFO] Baixando qwen3.5:4b. Isso acontece apenas na primeira vez.
