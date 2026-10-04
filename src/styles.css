@@ -164,3 +164,129 @@ linear-gradient(180deg,#070d13,#05090e 70%,#071017);box-shadow:inset 0 0 80px rg
 @keyframes voiceRing{0%{transform:scale(.75);opacity:.7}100%{transform:scale(1.65);opacity:0}}
 .jHealth .voiceActive{color:#82dfff!important}
 @media(max-width:600px){.jarvisVoiceCommand{align-items:flex-start;flex-wrap:wrap}.jarvisVoiceCommand>button{margin-left:0}.voicePulse{width:50px;height:50px}}
+
+
+/* =========================================================
+   AGENTE ZERO // PREMIUM COMMAND DECK
+   Visual system: restrained sci-fi, dense data, high clarity
+   ========================================================= */
+:root{
+  --az-bg:#05080d;--az-panel:#0a1017;--az-panel2:#0d151e;--az-line:#1a2a37;
+  --az-cyan:#76ddff;--az-mint:#9ff5d5;--az-text:#e9f4fa;--az-muted:#6f8294;
+}
+.app{background:
+ radial-gradient(circle at 75% -10%,rgba(74,190,255,.045),transparent 28%),
+ radial-gradient(circle at 15% 100%,rgba(92,255,191,.025),transparent 24%),#05080d}
+.sidebar{background:rgba(7,11,16,.94);border-right-color:#182630;backdrop-filter:blur(18px)}
+.brandmark{border-color:#284354;background:linear-gradient(145deg,#0e1a24,#091018);color:var(--az-cyan);box-shadow:inset 0 0 20px rgba(118,221,255,.06)}
+.mode{background:rgba(10,18,25,.65);border-color:#1b303d}
+.navitem{transition:background .18s ease,color .18s ease,transform .18s ease}
+.navitem:hover{transform:translateX(2px);background:#0e1821;color:#e9f7fc}
+.navitem.active{background:linear-gradient(90deg,#101d27,#0c151d);box-shadow:inset 2px 0 0 var(--az-cyan);color:#f5fbff}
+.navitem.active .navline{display:none}
+header{border-color:#172630;background:rgba(5,8,13,.82)}
+.statusPill{background:rgba(10,25,30,.7);border-color:#214034}
+.demoPill{background:rgba(45,34,12,.28)}
+.content{padding-top:28px}
+.pagehead h1{letter-spacing:-.035em}
+.primary{background:linear-gradient(135deg,#a9f7dc,#78d9ff);border-color:#a9f7dc;box-shadow:0 8px 30px rgba(118,221,255,.08)}
+.primary:hover{filter:brightness(1.06);transform:translateY(-1px)}
+.ghost{background:rgba(10,16,23,.72);transition:.18s ease}
+.ghost:hover{border-color:#355266;color:#dff5ff;background:#101a23}
+.panel,.metric{background:linear-gradient(145deg,rgba(13,20,28,.94),rgba(8,13,19,.96));border-color:#182832;box-shadow:0 12px 45px rgba(0,0,0,.13)}
+.panel{position:relative;overflow:hidden}
+.panel:before,.metric:before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,rgba(118,221,255,.025),transparent 35%);pointer-events:none}
+.metric{transition:transform .2s ease,border-color .2s ease}
+.metric:hover{transform:translateY(-2px);border-color:#29404e}
+.metricIcon{color:var(--az-cyan);border-color:#25404e;background:#0a161e}
+.toast{background:#e9fbf5;box-shadow:0 20px 70px rgba(0,0,0,.5)}
+.jarvisOS{--jcyan:#78ddff;--jmint:#9ff5d5;position:relative;min-height:calc(100vh - 62px);background:
+ radial-gradient(circle at 50% 30%,rgba(72,193,255,.075),transparent 22%),
+ radial-gradient(circle at 50% 70%,rgba(111,255,211,.025),transparent 30%),
+ linear-gradient(180deg,#04080d,#061018 55%,#04070b);overflow:hidden;color:#e8f5fa}
+.jarvisOS:before{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(117,220,255,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(117,220,255,.022) 1px,transparent 1px);background-size:44px 44px;mask-image:linear-gradient(to bottom,transparent,#000 15%,#000 85%,transparent)}
+.jarvisOSNoise{position:absolute;inset:0;pointer-events:none;opacity:.035;background-image:radial-gradient(#fff .6px,transparent .6px);background-size:5px 5px}
+.jarvisOSHeader{height:58px!important;position:relative!important;inset:auto!important;background:rgba(4,8,13,.62)!important;border-bottom:1px solid #172d3a!important;backdrop-filter:blur(18px);padding:0 22px!important}
+.jarvisOSBrand{display:flex;align-items:center;gap:10px}
+.jarvisOSMark{width:31px;height:31px;border:1px solid #315366;border-radius:9px;display:grid;place-items:center;color:var(--jcyan);background:#09141c;box-shadow:0 0 20px rgba(118,221,255,.08)}
+.jarvisOSBrand b{display:block;font:700 12px "Space Grotesk";letter-spacing:.18em}
+.jarvisOSBrand span{display:block;color:#526b7c;font:7px "Space Grotesk";letter-spacing:.13em;margin-top:2px}
+.jarvisOSWelcome{margin-left:34px;color:#6f8898;font:8px "Space Grotesk";letter-spacing:.13em}
+.jarvisOSClock{margin-left:auto;margin-right:14px;color:#d2e8f1;font:600 10px "Space Grotesk";letter-spacing:.1em;text-align:right}
+.jarvisOSClock small{display:block;color:#506777;font-size:6px;margin-top:3px}
+.jarvisOSExit{display:flex;align-items:center;gap:4px;background:transparent;border:1px solid #203642;border-radius:8px;color:#71899a;padding:7px 9px;font:700 8px "Space Grotesk";cursor:pointer}
+.jarvisOSExit:hover{color:#d9f6ff;border-color:#3b6174}
+.jarvisOSGrid{position:relative;z-index:1;display:grid;grid-template-columns:72px 1fr;min-height:calc(100vh - 120px)}
+.jarvisOSRail{border-right:1px solid #142934;background:rgba(3,8,12,.48);padding:14px 8px;display:flex;flex-direction:column;gap:7px}
+.jarvisOSRail button{border:1px solid transparent;background:transparent;color:#4f6979;border-radius:9px;padding:9px 4px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;font:7px "Space Grotesk";letter-spacing:.1em}
+.jarvisOSRail button svg{width:16px;height:16px}
+.jarvisOSRail button:hover,.jarvisOSRail button.active{color:var(--jcyan);background:#091720;border-color:#1d3948;box-shadow:inset 0 0 18px rgba(118,221,255,.04)}
+.jarvisOSMain{position:relative;padding:20px 26px 26px;max-width:1550px;width:100%;margin:auto}
+.jarvisOSTelemetry{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;color:#4e6979;font:7px "Space Grotesk";letter-spacing:.14em}
+.jarvisOSTelemetry span{padding:5px 8px;border-bottom:1px solid #142c38}
+.jarvisOSTelemetry b{color:#8adcf4}
+.jarvisReactor{height:355px;position:relative;display:grid;place-items:center;margin-top:4px}
+.jarvisReactor:before{content:"";position:absolute;width:310px;height:310px;border-radius:50%;border:1px solid rgba(119,221,255,.07);box-shadow:0 0 100px rgba(74,190,255,.05)}
+.jarvisReactor:after{content:"";position:absolute;width:440px;height:180px;border-top:1px solid rgba(119,221,255,.07);border-bottom:1px solid rgba(119,221,255,.04);border-radius:50%;transform:rotate(-12deg)}
+.jarvisReactor.reacting:before{animation:azReactor 1.2s ease-in-out infinite}
+.reactorOrbit{position:absolute;border:1px solid rgba(118,221,255,.2);border-radius:50%}
+.reactorOrbit.o1{width:190px;height:190px;border-top-color:#76ddff;animation:azSpin 8s linear infinite}
+.reactorOrbit.o2{width:260px;height:260px;border-left-color:#9ff5d5;animation:azSpinReverse 12s linear infinite}
+.reactorOrbit.o3{width:325px;height:325px;border-style:dashed;opacity:.55;animation:azSpin 24s linear infinite}
+.reactorCore{width:105px;height:105px;border-radius:50%;display:grid;place-items:center;align-content:center;gap:4px;background:radial-gradient(circle,#102a38,#061018 68%);border:1px solid #5ec9ee;color:#78ddff;box-shadow:0 0 42px rgba(75,195,255,.2),inset 0 0 35px rgba(75,195,255,.1);z-index:2}
+.reactorCore b{font:700 8px "Space Grotesk";letter-spacing:.15em}
+.reactorCore small{font:6px "Space Grotesk";letter-spacing:.16em;color:#4f7485}
+.jarvisMission{text-align:center;max-width:780px;margin:-15px auto 24px}
+.jarvisMission h1{font:600 clamp(27px,4vw,48px)/1.02 "Space Grotesk";letter-spacing:-.05em;margin:8px 0 12px;color:#edf8fc}
+.jarvisMission p{margin:auto;color:#61798a;font-size:11px;line-height:1.7;max-width:690px}
+.jarvisVoiceCommand{margin:20px auto 0;max-width:620px;display:flex;align-items:center;gap:11px;text-align:left;padding:10px;border:1px solid #1c3543;background:rgba(7,15,21,.8);border-radius:13px;box-shadow:0 16px 45px rgba(0,0,0,.18)}
+.jarvisVoiceCommand.active{border-color:#315c6d;box-shadow:0 0 0 1px rgba(118,221,255,.05),0 16px 55px rgba(0,0,0,.25)}
+.voicePulse{width:40px;height:40px;display:grid;place-items:center;border-radius:11px;border:1px solid #285064;color:#78ddff;background:#091922}
+.jarvisVoiceCommand.active .voicePulse{animation:azVoice 1.5s ease-in-out infinite}
+.jarvisVoiceCommand strong{display:block;font:700 9px "Space Grotesk";letter-spacing:.12em;color:#bfe9f7}
+.jarvisVoiceCommand span{display:block;color:#557080;font-size:9px;margin-top:3px}
+.jarvisVoiceCommand button{margin-left:auto;display:flex;align-items:center;gap:6px;border:1px solid #2a4c5d;background:#0b202b;color:#8fe5ff;border-radius:8px;padding:8px 10px;font:700 8px "Space Grotesk";cursor:pointer}
+.jarvisVoiceCommand button:disabled{opacity:.4;cursor:not-allowed}
+.jarvisPanels{display:grid;grid-template-columns:1.15fr .85fr;gap:12px}
+.jarvisPanel{min-height:205px;border:1px solid #172f3c;background:linear-gradient(145deg,rgba(8,17,24,.92),rgba(5,10,15,.95));border-radius:14px;padding:15px;box-shadow:0 18px 55px rgba(0,0,0,.18)}
+.jPanelTitle{display:flex;justify-content:space-between;align-items:center;color:#557181;font:700 8px "Space Grotesk";letter-spacing:.13em}
+.jPanelTitle b{color:#83d9ef;font-size:7px}
+.jarvisPanel h2{font:600 14px "Space Grotesk";line-height:1.35;margin:14px 0 6px;color:#dceef5}
+.jarvisPanel>p{color:#607789;font-size:9px;line-height:1.6}
+.jSteps{display:flex;flex-direction:column;margin-top:13px}
+.jSteps>div{display:grid;grid-template-columns:25px 1fr auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid #10232d}
+.jSteps i{font:700 7px "Space Grotesk";color:#4d7484;font-style:normal}
+.jSteps span{font-size:9px;color:#9db4c0}.jSteps small{color:#466273;font:7px "Space Grotesk";text-transform:uppercase}
+.jEmpty{height:145px;display:grid;place-items:center;text-align:center;color:#486170;font-size:9px;padding:30px}
+.jLogs{display:flex;flex-direction:column;margin-top:8px;max-height:174px;overflow:auto}
+.jLogs>div{display:grid;grid-template-columns:48px 65px 1fr;gap:7px;padding:7px 0;border-bottom:1px solid #10232d;font-size:8px}
+.jLogs time{color:#456272}.jLogs strong{color:#68bad5;font:700 7px "Space Grotesk"}.jLogs span{color:#718996;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jarvisBottom{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;margin-top:12px;padding:14px;border:1px solid #162d39;background:rgba(7,14,20,.8);border-radius:14px}
+.jarvisBottom>b,.jarvisBottom>div>b{display:block;font:700 9px "Space Grotesk";letter-spacing:.1em;color:#b8d7e1}
+.jarvisBottom>div>p{font-size:9px;color:#587080;margin:5px 0 0}
+.jarvisBottom>button{display:flex;align-items:center;gap:6px;border:1px solid #284653;background:#091820;color:#79cde7;border-radius:8px;padding:9px 10px;font:700 7px "Space Grotesk";cursor:pointer}
+.jarvisBottom>button:hover{border-color:#3b697c}
+.jHealth{grid-column:1/-1;display:flex;gap:13px;flex-wrap:wrap;padding-top:10px;border-top:1px solid #10242e;color:#4e6a79;font:7px "Space Grotesk";letter-spacing:.08em}
+.jHealth span,.jHealth button{display:flex;align-items:center;gap:5px}
+.jHealth button{border:0;background:transparent;color:#557281;cursor:pointer;font:inherit;letter-spacing:inherit}
+.jHealth .ambientOn,.jHealth button:hover{color:#8de3c7}
+.jarvisFaceMini{position:fixed;right:18px;bottom:18px;width:190px;border:1px solid #254353;border-radius:11px;overflow:hidden;background:#050a0f;z-index:50;box-shadow:0 20px 70px rgba(0,0,0,.45)}
+.jarvisFaceMini video{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;opacity:.78}
+.jarvisFaceMini>div{padding:7px;color:#638292;font:7px "Space Grotesk";display:flex;align-items:center;gap:5px}
+.jarvisFaceMini button{margin-left:auto;border:1px solid #28404d;background:transparent;color:#6c8795;font:7px "Space Grotesk";border-radius:5px;padding:3px 5px}
+.jarvisIdentityGate{position:fixed;inset:0;z-index:100;background:rgba(2,6,10,.88);backdrop-filter:blur(22px);display:grid;place-items:center;padding:20px}
+.jarvisIdentityBox{position:relative;width:min(480px,100%);padding:34px;border:1px solid #234151;border-radius:20px;background:linear-gradient(145deg,#0b151e,#060b10);box-shadow:0 30px 100px rgba(0,0,0,.6)}
+.identityClose{position:absolute;right:15px;top:15px;border:1px solid #243945;background:transparent;color:#64808f;border-radius:7px;padding:5px;cursor:pointer}
+.identityOrb{width:58px;height:58px;border:1px solid #3b7084;border-radius:50%;display:grid;place-items:center;color:#79dfff;margin-bottom:22px;box-shadow:0 0 35px rgba(87,204,255,.12)}
+.jarvisIdentityBox h1{font:600 30px "Space Grotesk";letter-spacing:-.04em;margin:8px 0}
+.jarvisIdentityBox p{color:#667d8d;font-size:10px;line-height:1.7}
+.identityName{display:flex;align-items:center;gap:8px;border:1px solid #233d4b;border-radius:9px;background:#071018;padding:10px 12px;margin:18px 0 9px;color:#638c9c}
+.identityName input{width:100%;background:transparent;border:0;outline:0;color:#dcecf2;font:11px "DM Sans"}
+.faceCheck{display:flex;align-items:center;gap:9px;padding:10px;border:1px solid #182c37;border-radius:9px;color:#567180}
+.faceCheck.ready{border-color:#254d42;color:#87c9b0}
+.faceCheck b{display:block;font:700 8px "Space Grotesk";letter-spacing:.08em}.faceCheck small{display:block;font-size:8px;margin-top:3px;color:#526b79}
+.identityStart{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;margin-top:15px;padding:11px;border:1px solid #8de8cf;border-radius:9px;background:#a1f4d8;color:#06120e;font:700 10px "Space Grotesk";cursor:pointer}
+.identityStart:disabled{opacity:.45;cursor:not-allowed}
+@keyframes azSpin{to{transform:rotate(360deg)}}@keyframes azSpinReverse{to{transform:rotate(-360deg)}}@keyframes azReactor{50%{transform:scale(1.035);opacity:.72}}@keyframes azVoice{50%{box-shadow:0 0 25px rgba(118,221,255,.25)}} 
+@media(max-width:850px){.jarvisOSGrid{grid-template-columns:1fr}.jarvisOSRail{display:none}.jarvisOSMain{padding:15px}.jarvisPanels{grid-template-columns:1fr}.jarvisReactor{height:290px}.reactorOrbit.o3{width:270px;height:270px}.jarvisMission{margin-top:-8px}.jarvisBottom{grid-template-columns:1fr 1fr}.jarvisBottom>div:first-child{grid-column:1/-1}.jHealth{grid-column:1/-1}.jarvisOSWelcome{display:none}}
+@media(max-width:560px){.jarvisOSHeader{padding:0 12px!important}.jarvisOSBrand span,.jarvisOSExit{display:none}.jarvisOSClock{font-size:9px}.jarvisReactor{height:245px}.jarvisReactor:before{width:220px;height:220px}.reactorOrbit.o1{width:145px;height:145px}.reactorOrbit.o2{width:195px;height:195px}.reactorOrbit.o3{width:245px;height:245px}.reactorCore{width:84px;height:84px}.jarvisMission h1{font-size:29px}.jarvisVoiceCommand{align-items:flex-start}.jarvisVoiceCommand button{padding:7px}.jarvisBottom{grid-template-columns:1fr}.jarvisBottom>div:first-child{grid-column:auto}.jLogs>div{grid-template-columns:42px 55px 1fr}.jarvisFaceMini{width:150px;right:10px;bottom:10px}}
