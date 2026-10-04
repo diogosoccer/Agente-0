@@ -1,4 +1,4 @@
-export type JarvisMemoryCategory = "preferencia" | "objetivo" | "decisao" | "contexto" | "aprendizado" | "correcao";
+export type JarvisMemoryCategory = "Estratégia" | "Clientes" | "Operação" | "Financeiro" | "Aprendizados";
 export type JarvisImportantMemory = { id:string; category:JarvisMemoryCategory; title:string; content:string; importance:number; createdAt:string; source:"conversation"|"system" };
 const KEY="az:memory";
 const read=():JarvisImportantMemory[]=>{try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch{return[]}};
@@ -20,9 +20,9 @@ export function assessImportance(text:string){
 export function rememberIfImportant(text:string, source:"conversation"|"system"="conversation"){
  const a=assessImportance(text); if(!a.important)return null;
  const clean=text.trim().replace(/\\s+/g," ");
- const item:JarvisImportantMemory={id:crypto.randomUUID(),category:/prefiro|gosto|sempre|nunca|evite/.test(normalize(clean))?"preferencia":/decidi|decisao|decisão|definido/.test(normalize(clean))?"decisao":/correcao|correção|certo/.test(normalize(clean))?"correcao":/objetivo|meta|longo prazo/.test(normalize(clean))?"objetivo":"contexto",title:"Memória importante",content:clean,importance:Math.min(1,a.score),createdAt:new Date().toISOString(),source};
+ const item:JarvisImportantMemory={id:crypto.randomUUID(),category:/prefiro|gosto|sempre|nunca|evite|objetivo|meta|longo prazo/.test(normalize(clean))?"Estratégia":/decidi|decisao|decisão|definido/.test(normalize(clean))?"Estratégia":/correcao|correção|certo/.test(normalize(clean))?"Aprendizados":"Operação",title:"Memória importante",content:clean,importance:Math.min(1,a.score),createdAt:new Date().toISOString(),source};
  const existing=read(); const duplicate=existing.some(x=>normalize(x.content)===normalize(clean)); if(duplicate)return null;
- write([item,...existing]); return item;
+ write([item,...existing]); window.dispatchEvent(new Event("jarvis-memory-updated")); return item;
 }
 export function listImportantMemories(){return read().sort((a,b)=>b.importance-a.importance||b.createdAt.localeCompare(a.createdAt));}
 export function forgetMemory(id:string){write(read().filter(x=>x.id!==id));}
