@@ -90,7 +90,7 @@ Retorne SOMENTE JSON válido:
 {"plan":{"id":"string","summary":"string","intent":"string","confidence":0.0,"reason":"string","requiresApproval":false,"actions":[...]}}
 Ações permitidas:
 - {"type":"navigate","path":"/rota","label":"..."} para rotas internas do Agente Zero.
-- {"type":"worker_health","label":"..."} para verificar o computador.
+- {"type":"worker_health","label":"..."} para verificar o computador.\n- {"type":"research_web","query":"...","label":"..."} para pesquisa pública somente leitura no mecanismo de pesquisa local.
 - {"type":"open_url","url":"https://...","label":"...","requiresApproval":true} para abrir URL externa.
 - {"type":"inspect_site","url":"https://...","label":"...","requiresApproval":true} para inspeção somente leitura.
 - {"type":"delegate","goal":"...","label":"..."} para tarefas complexas encaminhadas ao Multi-Agent Runtime.
@@ -117,7 +117,7 @@ Não inclua markdown, comentários ou texto fora do JSON.`;
     const raw = typeof data.output_text === "string" ? data.output_text.trim() : "";
     const parsed = JSON.parse(raw.replace(/^\`\`\`json\s*|\s*\`\`\`$/g, ""));
     const plan = parsed?.plan;
-    const allowed = new Set(["navigate","worker_health","open_url","inspect_site","delegate"]);
+    const allowed = new Set(["navigate","worker_health","research_web","open_url","inspect_site","delegate"]);
     if (!plan || !Array.isArray(plan.actions) || plan.actions.length > 8) {
       return res.status(502).json({ error: "Plano inválido." });
     }
