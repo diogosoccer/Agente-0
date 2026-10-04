@@ -1,10 +1,10 @@
-import{useMemo,useState}from"react";
+import{useState}from"react";
 import{BrainCircuit,CheckCircle2,Compass,FlaskConical,GitBranch,Lightbulb,LockKeyhole,Play,RefreshCw,Shield,Target,Zap}from"lucide-react";
-import{addInsight,capabilityPipeline,createMission,listInsights,listMissions,scanLocalIntelligence,updateMission,type Mission}from"../services/jarvisIntelligence";
+import{addInsight,createMission,listInsights,listMissions,scanLocalIntelligence,updateMission,type Mission}from"../services/jarvisIntelligence";
 import{studyCapabilityGap}from"../services/jarvisEvolution";
 export function JarvisIntelligence(){
  const[,refresh]=useState(0); const missions=listMissions(); const insights=listInsights(); const [goal,setGoal]=useState("");
- const local=useMemo(()=>scanLocalIntelligence(),[refresh]);
+ const local=scanLocalIntelligence();
  const launch=()=>{if(!goal.trim())return;createMission(goal);setGoal("");refresh(x=>x+1)};
  const evolve=(task:string)=>{studyCapabilityGap(task);refresh(x=>x+1)};
  const advance=(m:Mission)=>{const order:Mission["status"][]=["queued","researching","planning","awaiting_approval","executing","verifying","done"];const i=order.indexOf(m.status);updateMission(m.id,{status:order[Math.min(i+1,order.length-1)]});refresh(x=>x+1)};
