@@ -1,6 +1,6 @@
 export type JarvisPlanAction =
   | { type: "navigate"; path: string; label: string }
-  | { type: "worker_health"; label: string }
+  | { type: "worker_health"; label: string }\n  | { type: "research_web"; query: string; label: string }
   | { type: "open_url"; url: string; label: string; requiresApproval: true }
   | { type: "inspect_site"; url: string; label: string; requiresApproval: true }
   | { type: "delegate"; goal: string; label: string };
