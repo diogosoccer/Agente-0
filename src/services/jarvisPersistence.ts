@@ -17,7 +17,7 @@ type RecordRow = {
   updated_at: string;
 };
 
-const tableFor = (kind: PersistedRecordKind) => `jarvis_${kind === "memory" ? "memories" : kind === "missions" ? "missions" : kind === "tasks" ? "tasks" : kind === "executions" ? "executions" : kind === "approval" ? "approvals" : kind === "event" ? "events" : "opportunities"}`;
+const tableFor = (kind: PersistedRecordKind) => { const tables: Record<PersistedRecordKind, string> = { mission: "jarvis_missions", task: "jarvis_tasks", memory: "jarvis_memories", execution: "jarvis_executions", approval: "jarvis_approvals", event: "jarvis_events", opportunity: "jarvis_opportunities" }; return tables[kind]; };
 
 export async function persistenceAvailable() {
   return Boolean(supabaseConfigured && supabase);
