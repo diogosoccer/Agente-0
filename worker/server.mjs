@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import process from "node:process";
 import { randomUUID } from "node:crypto";
+import { generateLocalText, localAIStatus, OLLAMA_MODEL, OLLAMA_URL } from "./local-ai.mjs";
 
 const app = express();
 const port = Number(process.env.PORT || 8787);
@@ -27,6 +28,8 @@ app.use((req, res, next) => {
 
 
 const geminiModel = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+
+async function generateBestLocalText(system, user, maxTokens) { try { return await generateLocalText(system, user, maxTokens); } catch { return null; } }
 
 // Gemini é opcional: o JARVIS possui fallback local.
 async function generateGeminiText(system, user, maxOutputTokens) {
@@ -311,7 +314,7 @@ app.post("/opportunities/deep", async (req, res) => {
   finally { busy=false; }
 });
 
-app.get("/health", (_req, res) => {
+app.get("/ai/status", async (_req, res) => {\n  const status = await localAIStatus();\n  res.json({ ...status, provider: "ollama", model: OLLAMA_MODEL, url: OLLAMA_URL });\n});\n\napp.post("/ai/chat", async (req, res) => {\n  const input = typeof req.body?.input === "string" ? req.body.input.trim() : "";\n  if (!input) return res.status(400).json({ error: "input obrigatório" });\n  try {\n    const system = "Você é JARVIS, um assistente pessoal local, natural, objetivo e educado, falando português do Brasil. Não invente que executou ações. Se uma ação externa for necessária, explique que ela será planejada e protegida por aprovação. Responda de forma conversacional.";\n    const answer = await generateLocalText(system, input, 700);\n    res.json({ ok: true, answer, provider: "ollama", model: OLLAMA_MODEL });\n  } catch (error) {\n    res.status(503).json({ ok: false, error: error instanceof Error ? error.message : "IA local indisponível." });\n  }\n});\n\napp.get("/health", (_req, res) => {
   res.json({ status: busy ? "busy" : "connected", version: "0.1.0" });
 });
 
