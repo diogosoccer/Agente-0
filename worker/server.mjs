@@ -141,6 +141,34 @@ Não inclua markdown, comentários ou texto fora do JSON.`;
   }
 });
 
+app.post("/music/search", async (req, res) => {
+  const query = typeof req.body?.query === "string" ? req.body.query.trim() : "";
+  if (!query) return res.status(400).json({ error: "query obrigatória" });
+  if (query.length > 200) return res.status(400).json({ error: "query muito longa" });
+  try {
+    busy = true;
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    const target = `https://www.bing.com/search?q=${encodeURIComponent("site:youtube.com/watch " + query)}`;
+    await page.goto(target, { waitUntil: "domcontentloaded", timeout: 20000 });
+    const results = await page.locator("li.b_algo").evaluateAll(nodes => nodes.slice(0, 10).map(node => ({
+      title: node.querySelector("h2")?.textContent?.trim() || "",
+      url: node.querySelector("h2 a")?.href || ""
+    })).filter(x => x.title && x.url));
+    await browser.close();
+    const hit = results.find(x => /youtube\.com\/watch\?v=/.test(x.url));
+    if (!hit) return res.status(404).json({ error: "Nenhum vídeo do YouTube encontrado." });
+    const parsed = new URL(hit.url);
+    const videoId = parsed.searchParams.get("v");
+    if (!videoId) return res.status(404).json({ error: "Vídeo inválido." });
+    res.json({ ok: true, title: hit.title, videoId });
+  } catch (error) {
+    res.status(502).json({ ok: false, error: error instanceof Error ? error.message : "Falha ao localizar música." });
+  } finally {
+    busy = false;
+  }
+});
+
 app.post("/research", async (req, res) => {
   const query = typeof req.body?.query === "string" ? req.body.query.trim() : "";
   if (!query) return res.status(400).json({ error: "query obrigatória" });
