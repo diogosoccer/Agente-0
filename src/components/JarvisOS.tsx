@@ -4,7 +4,8 @@ import{createActionPlanWithAI,type JarvisActionPlan}from"../services/jarvisActio
 import{multiAgentRuntime}from"../services/agentRuntime";
 import{discoverUnknown}from"../services/jarvisUnknown";
 import{studyCapabilityGap}from"../services/jarvisEvolution";
-import{startJarvisAmbient,stopJarvisAmbient}from"../services/jarvisAmbient";\nimport{rememberIfImportant}from"../services/jarvisMemory";
+import{startJarvisAmbient,stopJarvisAmbient}from"../services/jarvisAmbient";
+import{rememberIfImportant}from"../services/jarvisMemory";
 
 type Props={go:(p:string)=>void;addApproval:(a:any)=>void};
 type Log={id:string;time:string;text:string;kind:string};
