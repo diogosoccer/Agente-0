@@ -30,8 +30,8 @@ export class MultiAgentRuntime{
      const d=await r.json();const results=Array.isArray(d.results)?d.results:[];
      if(!results.length){agentOrchestrator.complete(taskId,"Researcher pesquisou o objetivo, mas não encontrou resultados suficientes.");return}
      const summary=results.slice(0,5).map((x:any,i:number)=>`${i+1}. ${x.title} — ${x.snippet||""}`).join(" | ");
-     agentOrchestrator.complete(taskId,"Pesquisa concluída com "+results.length+" resultados. "+summary);
-   }catch(error){agentOrchestrator.fail(taskId,error instanceof Error?error.message:"Falha na pesquisa.")}
+     const done=agentOrchestrator.complete(taskId,"Pesquisa concluída com "+results.length+" resultados. "+summary); finishParent(done);
+   }catch(error){const failed=agentOrchestrator.fail(taskId,error instanceof Error?error.message:"Falha na pesquisa."); finishParent(failed)}
  }
 
  private runBusiness(taskId:string,goal:string){
@@ -52,10 +52,10 @@ export class MultiAgentRuntime{
          agentOrchestrator.assign(id,"planner");
          const child=agentOrchestrator.create("Executar: "+task.goal,"normal",id);
          agentOrchestrator.assign(child.id,a);this.queue.push(child.id);
-         agentOrchestrator.complete(id,"Fluxo delegado ao Planner e ao especialista "+a+".");
+         agentOrchestrator.emit(id,"task.progress","Executando especialista "+a+". A tarefa pai permanecerá aberta até a etapa especialista terminar.");
          continue;
        }
-       const profile=AGENT_PROFILES.find(a=>a.id===task.agent);if(!profile)continue;
+       const finishParent=(child:typeof task)=>{ if(!child.parentId)return; const parent=agentOrchestrator.list().find(x=>x.id===child.parentId); if(!parent)return; if(child.status==="done") agentOrchestrator.complete(parent.id,child.result||"Etapa especialista concluída."); else if(child.status==="error") agentOrchestrator.fail(parent.id,child.error||"Etapa especialista falhou."); };\n       const profile=AGENT_PROFILES.find(a=>a.id===task.agent);if(!profile)continue;
        if(profile.canAct){
          const approval=requestApproval("Executar tarefa do agente "+profile.name,"medium",task.goal);
          agentOrchestrator.emit(task.id,"approval.required","Aprovação necessária: "+approval.id);
