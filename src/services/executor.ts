@@ -5,7 +5,8 @@ export interface BrowserTask {
   id: string;
   type: BrowserTaskType;
   url: string;
-  approved?: boolean;\n  approvalToken?: string;
+  approved?: boolean;
+  approvalToken?: string;
   createdAt: string;
 }
 
@@ -24,7 +25,18 @@ export async function checkExecutor(baseUrl: string): Promise<ExecutorHealth> {
   }
 }
 
-export async function approveBrowserTask(baseUrl: string, task: BrowserTask): Promise<string> {\n  const response = await fetch(baseUrl.replace(/\/$/, "") + "/approve", {\n    method: "POST", headers: { "Content-Type": "application/json" },\n    body: JSON.stringify({ id: task.id, type: task.type, url: task.url })\n  });\n  if (!response.ok) throw new Error("Executor recusou a aprovação.");\n  const data = await response.json();\n  if (!data.approvalToken) throw new Error("Executor não forneceu token de aprovação.");\n  return data.approvalToken;\n}\n\nexport async function runBrowserTask(baseUrl: string, task: BrowserTask) {
+export async function approveBrowserTask(baseUrl: string, task: BrowserTask): Promise<string> {
+  const response = await fetch(baseUrl.replace(/\/$/, "") + "/approve", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: task.id, type: task.type, url: task.url })
+  });
+  if (!response.ok) throw new Error("Executor recusou a aprovação.");
+  const data = await response.json();
+  if (!data.approvalToken) throw new Error("Executor não forneceu token de aprovação.");
+  return data.approvalToken;
+}
+
+export async function runBrowserTask(baseUrl: string, task: BrowserTask) {
   const response = await fetch(baseUrl.replace(/\/$/, "") + "/tasks", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
