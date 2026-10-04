@@ -290,3 +290,22 @@ header{border-color:#172630;background:rgba(5,8,13,.82)}
 @keyframes azSpin{to{transform:rotate(360deg)}}@keyframes azSpinReverse{to{transform:rotate(-360deg)}}@keyframes azReactor{50%{transform:scale(1.035);opacity:.72}}@keyframes azVoice{50%{box-shadow:0 0 25px rgba(118,221,255,.25)}} 
 @media(max-width:850px){.jarvisOSGrid{grid-template-columns:1fr}.jarvisOSRail{display:none}.jarvisOSMain{padding:15px}.jarvisPanels{grid-template-columns:1fr}.jarvisReactor{height:290px}.reactorOrbit.o3{width:270px;height:270px}.jarvisMission{margin-top:-8px}.jarvisBottom{grid-template-columns:1fr 1fr}.jarvisBottom>div:first-child{grid-column:1/-1}.jHealth{grid-column:1/-1}.jarvisOSWelcome{display:none}}
 @media(max-width:560px){.jarvisOSHeader{padding:0 12px!important}.jarvisOSBrand span,.jarvisOSExit{display:none}.jarvisOSClock{font-size:9px}.jarvisReactor{height:245px}.jarvisReactor:before{width:220px;height:220px}.reactorOrbit.o1{width:145px;height:145px}.reactorOrbit.o2{width:195px;height:195px}.reactorOrbit.o3{width:245px;height:245px}.reactorCore{width:84px;height:84px}.jarvisMission h1{font-size:29px}.jarvisVoiceCommand{align-items:flex-start}.jarvisVoiceCommand button{padding:7px}.jarvisBottom{grid-template-columns:1fr}.jarvisBottom>div:first-child{grid-column:auto}.jLogs>div{grid-template-columns:42px 55px 1fr}.jarvisFaceMini{width:150px;right:10px;bottom:10px}}
+
+
+.jarvisBoot{position:fixed;inset:0;z-index:999;background:#03070b;display:grid;place-items:center;text-align:center;overflow:hidden}
+.jarvisBoot:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 45%,rgba(118,221,255,.1),transparent 25%),linear-gradient(rgba(118,221,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(118,221,255,.025) 1px,transparent 1px);background-size:auto,42px 42px,42px 42px}
+.jarvisBootCore{position:relative;width:170px;height:170px;display:grid;place-items:center;margin:0 auto 25px}
+.bootRing{position:absolute;border:1px solid rgba(118,221,255,.35);border-radius:50%}
+.bootRing.r1{width:100px;height:100px;border-top-color:#9ff5d5;animation:azSpin 4s linear infinite}
+.bootRing.r2{width:150px;height:150px;border-left-color:#78ddff;border-style:dashed;animation:azSpinReverse 7s linear infinite}
+.bootCore{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;color:#78ddff;background:#081721;border:1px solid #4b9db8;box-shadow:0 0 50px rgba(118,221,255,.2),inset 0 0 30px rgba(118,221,255,.08);animation:bootPulse 1.4s ease-in-out infinite}
+.jarvisBoot .eyebrow{position:relative}
+.jarvisBoot h1{position:relative;margin:12px 0 8px;font:600 clamp(25px,4vw,42px)/1 "Space Grotesk";letter-spacing:-.045em;color:#eaf7fb}
+.jarvisBoot p{position:relative;margin:0;color:#6c8797;font-size:10px}
+.bootSteps{position:relative;display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin:24px auto 18px}
+.bootSteps span{padding:7px 9px;border:1px solid #173441;border-radius:7px;color:#506b7a;font:7px "Space Grotesk";letter-spacing:.08em;background:rgba(7,15,21,.65)}
+.bootSteps b{color:#91e5c9;margin-left:5px}
+.jarvisBoot small{position:relative;color:#365464;font:7px "Space Grotesk";letter-spacing:.18em}
+@keyframes bootPulse{50%{transform:scale(1.06);box-shadow:0 0 75px rgba(118,221,255,.3),inset 0 0 30px rgba(118,221,255,.12)}}
+@media(max-width:560px){.jarvisBootCore{width:140px;height:140px}.bootRing.r2{width:125px;height:125px}.bootRing.r1{width:88px;height:88px}.jarvisBoot h1{font-size:27px}.bootSteps{gap:6px;padding:0 15px}}
+@media(prefers-reduced-motion:reduce){.bootRing,.bootCore,.reactorOrbit{animation:none!important}}
