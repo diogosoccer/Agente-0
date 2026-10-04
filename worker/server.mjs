@@ -260,6 +260,66 @@ app.post("/system/action", async (req, res) => {
   } catch(error) { res.status(500).json({ok:false,error:error instanceof Error?error.message:"Falha ao abrir aplicativo."}); }
 });
 
+const ebookTopics = [
+  "produtividade para estudantes",
+  "organização pessoal",
+  "inteligência artificial para iniciantes",
+  "hábitos de estudo",
+  "criatividade e resolução de problemas",
+  "educação financeira básica"
+];
+let ebookState = { lastRun: null, nextRun: null, lastFile: null, lastTopic: null };
+
+function ebookSlug(value) {
+  return value.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 70);
+}
+
+async function generateEbook(topic) {
+  busy = true;
+  try {
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    const query = encodeURIComponent(topic + " guia dicas fundamentos");
+    await page.goto("https://www.bing.com/search?q=" + query, { waitUntil: "domcontentloaded", timeout: 20000 });
+    const sources = await page.locator("li.b_algo").evaluateAll(nodes => nodes.slice(0, 6).map(node => ({
+      title: node.querySelector("h2")?.textContent?.trim() || "",
+      url: node.querySelector("h2 a")?.href || "",
+      snippet: node.querySelector(".b_caption p")?.textContent?.trim() || ""
+    })).filter(x => x.title && x.url));
+    await browser.close();
+
+    const date = new Date().toISOString().slice(0, 10);
+    const title = "Guia prático: " + topic.charAt(0).toUpperCase() + topic.slice(1);
+    const chapters = [
+      ["Introdução", "Este guia apresenta conceitos fundamentais sobre " + topic + " e transforma o tema em passos práticos."],
+      ["O que realmente importa", sources[0]?.snippet || "Comece pelos fundamentos, defina um objetivo claro e escolha poucas ações de alto impacto."],
+      ["Passo 1 — Defina seu ponto de partida", "Liste o que você já sabe, o que precisa aprender e qual resultado pretende alcançar. Evite tentar resolver tudo ao mesmo tempo."],
+      ["Passo 2 — Monte um sistema simples", "Escolha uma rotina curta e repetível. Registre o progresso e faça ajustes quando uma estratégia não funcionar."],
+      ["Passo 3 — Transforme conhecimento em prática", "Separe pequenos exercícios ou ações concretas e revise os resultados regularmente."],
+      ["Erros comuns", "Evite excesso de ferramentas, metas vagas, copiar métodos sem entender o contexto e abandonar o processo depois dos primeiros obstáculos."],
+      ["Plano de 7 dias", "Dia 1: definir objetivo. Dia 2: organizar recursos. Dia 3: primeira prática. Dia 4: revisar. Dia 5: repetir. Dia 6: melhorar. Dia 7: avaliar e decidir o próximo ciclo."],
+      ["Conclusão", "O valor deste material está em aplicar uma ideia por vez, observar o resultado e melhorar continuamente."]
+    ];
+    const md = "# " + title + "\n\n";
+    const body = chapters.map(([h,p]) => "## " + h + "\n\n" + p).join("\n\n");
+    const sourceBlock = "\n\n## Fontes para aprofundamento\n\n" + sources.map(s => "- [" + s.title.replace(/\\[/g,"(").replace(/\\]/g,")") + "](" + s.url + ") — " + s.snippet).join("\n");
+    await mkdir("artifacts/ebooks", { recursive: true });
+    const file = "artifacts/ebooks/" + date + "-" + ebookSlug(topic) + ".md";
+    await writeFile(file, md + body + sourceBlock, "utf8");
+    ebookState = { lastRun: new Date().toISOString(), nextRun: new Date(Date.now()+86400000).toISOString(), lastFile: file, lastTopic: topic };
+    return { ok: true, title, topic, file, sources: sources.length, state: ebookState };
+  } finally { busy = false; }
+}
+
+app.post("/ebook/generate", async (req, res) => {
+  const topic = typeof req.body?.topic === "string" && req.body.topic.trim() ? req.body.topic.trim().slice(0, 120) : ebookTopics[new Date().getDate() % ebookTopics.length];
+  if (busy) return res.status(409).json({ ok: false, error: "Worker ocupado." });
+  try { res.json(await generateEbook(topic)); }
+  catch (error) { res.status(502).json({ ok: false, error: error instanceof Error ? error.message : "Falha ao gerar e-book." }); }
+});
+
+app.get("/ebook/status", (_req, res) => res.json({ ok: true, ...ebookState, topics: ebookTopics }));
+
 app.get("/health", (_req, res) => {
   res.json({ status: busy ? "busy" : "connected", version: "0.1.0" });
 });
