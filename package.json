@@ -1,1 +1,28 @@
-{"name":"agente-zero","private":true,"version":"0.1.0","type":"module","scripts":{"dev":"vite","build":"tsc -b && vite build","preview":"vite preview"},"dependencies":{"@vitejs/plugin-react":"latest","lucide-react":"latest","react":"latest","react-dom":"latest","react-router-dom":"latest"},"devDependencies":{"typescript":"latest","@types/react":"latest","@types/react-dom":"latest","vite":"latest","tailwindcss":"latest","@tailwindcss/vite":"latest","shadcn":"latest"}}
+{
+  "name": "agente-zero",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-router-dom": "latest",
+    "@supabase/supabase-js": "2.117.2"
+  },
+  "devDependencies": {
+    "typescript": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "vite": "latest",
+    "tailwindcss": "latest",
+    "@tailwindcss/vite": "latest",
+    "shadcn": "latest"
+  }
+}
