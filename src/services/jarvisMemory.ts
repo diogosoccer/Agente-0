@@ -1,3 +1,4 @@
+import { listJarvisRecords, upsertJarvisRecord, deleteJarvisRecord } from "./jarvisPersistence";
 export type JarvisMemoryCategory = "Estratégia" | "Clientes" | "Operação" | "Financeiro" | "Aprendizados";
 export type JarvisImportantMemory = { id:string; category:JarvisMemoryCategory; title:string; content:string; importance:number; createdAt:string; source:"conversation"|"system"; reason?:string };
 const KEY="az:memory";
@@ -27,7 +28,16 @@ export function rememberIfImportant(text:string,source:"conversation"|"system"="
  const related=existing.find(x=>{const words=n.split(" ").filter(w=>w.length>4);return words.slice(0,10).filter(w=>normalize(x.content).includes(w)).length>=3});
  if(related&&a.score>=related.importance){const merged={...related,content:clean,importance:a.score,createdAt:new Date().toISOString(),reason:a.reason};write(existing.map(x=>x.id===related.id?merged:x));window.dispatchEvent(new Event("jarvis-memory-updated"));return merged}
  const item:JarvisImportantMemory={id:crypto.randomUUID(),category:categoryFor(n),title:"Memória importante",content:clean,importance:a.score,createdAt:new Date().toISOString(),source,reason:a.reason};
- write([item,...existing]);window.dispatchEvent(new Event("jarvis-memory-updated"));return item;
+ write([item,...existing]); void upsertJarvisRecord("memory", item.id, item as unknown as Record<string, unknown>); window.dispatchEvent(new Event("jarvis-memory-updated"));return item;
 }
 export function listImportantMemories(){return read().sort((a,b)=>b.importance-a.importance||b.createdAt.localeCompare(a.createdAt));}
-export function forgetMemory(id:string){write(read().filter(x=>x.id!==id));window.dispatchEvent(new Event("jarvis-memory-updated"));}
+export function forgetMemory(id:string){write(read().filter(x=>x.id!==id)); void deleteJarvisRecord("memory", id); window.dispatchEvent(new Event("jarvis-memory-updated"));}
+
+export async function hydrateImportantMemories(){
+ const rows=await listJarvisRecords("memory",300);
+ if(!rows.length)return;
+ const remote=rows.map(r=>r.data as unknown as JarvisImportantMemory).filter(x=>x?.id&&x?.content);
+ const merged=[...remote,...read().filter(local=>!remote.some(x=>x.id===local.id))].slice(0,300);
+ write(merged);
+ window.dispatchEvent(new Event("jarvis-memory-updated"));
+}
