@@ -29,7 +29,7 @@ export function JarvisOS({go,addApproval}:Props){
   if(!p){const gap=studyCapabilityGap(input);setStatus("CAPABILITY GAP");push("Não consigo executar isso ainda. Estudei como essa capacidade poderia ser adicionada e deixei uma proposta aguardando sua permissão.","EVOLUTION");push(gap.title+" — "+gap.proposedChange,"EVOLUTION");go("/evolucao");setThinking(false);return}
   setPlan(p);push(p.summary,"PLAN");setStatus(p.requiresApproval?"AWAITING APPROVAL":"EXECUTING");
   for(const a of p.actions){if(a.type==="navigate"){go(a.path);push("Navegando para "+a.path,"ACTION")}
-   if(a.type==="worker_health"){try{const h=await fetch(base+"/health",{signal:AbortSignal.timeout(3000)});const d=await h.json();push("Worker conectado: "+d.status,"ACTION")}catch{push("Worker local indisponível.","GUARD")}}
+   if(a.type==="worker_health"){try{const h=await fetch(base+"/health",{signal:AbortSignal.timeout(3000)});const d=await h.json();push("Worker conectado: "+d.status,"ACTION")}catch{push("Worker local indisponível.","GUARD")}}\n   if(a.type==="research_web"){await research(a.query);push("Pesquisa concluída: "+a.label,"RESEARCH")}
    if(a.type==="delegate"){const t=multiAgentRuntime.submit(a.goal);push("Missão delegada ao agente runtime: "+t.id.slice(0,8),"AGENT")}
    if(a.type==="open_url"||a.type==="inspect_site"){addApproval({id:crypto.randomUUID(),type:"execução de navegador",title:a.label,description:"Ação externa preparada pelo Action Planner. Requer aprovação explícita.",createdAt:new Date().toISOString(),status:"pending",execution:{type:a.type,url:a.url}});push("Ação externa bloqueada até aprovação.","GUARD");go("/aprovacoes")}
   }setStatus(p.requiresApproval?"AWAITING APPROVAL":"READY");setThinking(false)
