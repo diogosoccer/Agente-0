@@ -319,6 +319,12 @@ app.post("/ebook/generate", async (req, res) => {
 });
 
 app.get("/ebook/status", (_req, res) => res.json({ ok: true, ...ebookState, topics: ebookTopics }));
+setInterval(async () => {
+  if (busy) return;
+  const topic = ebookTopics[new Date().getDate() % ebookTopics.length];
+  try { await generateEbook(topic); }
+  catch (error) { console.error("Daily ebook factory:", error instanceof Error ? error.message : error); }
+}, 24 * 60 * 60 * 1000);
 
 app.get("/health", (_req, res) => {
   res.json({ status: busy ? "busy" : "connected", version: "0.1.0" });
