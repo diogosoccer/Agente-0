@@ -26,7 +26,7 @@ export function rememberIfImportant(text:string,source:"conversation"|"system"="
  const clean=text.trim().replace(/\s+/g," "); const n=normalize(clean); const existing=read();
  if(existing.some(x=>normalize(x.content)===n))return null;
  const related=existing.find(x=>{const words=n.split(" ").filter(w=>w.length>4);return words.slice(0,10).filter(w=>normalize(x.content).includes(w)).length>=3});
- if(related&&a.score>=related.importance){const merged={...related,content:clean,importance:a.score,createdAt:new Date().toISOString(),reason:a.reason};write(existing.map(x=>x.id===related.id?merged:x));window.dispatchEvent(new Event("jarvis-memory-updated"));return merged}
+ if(related&&a.score>=related.importance){const merged={...related,content:clean,importance:a.score,createdAt:new Date().toISOString(),reason:a.reason};write(existing.map(x=>x.id===related.id?merged:x));void upsertJarvisRecord("memory",merged.id,merged as unknown as Record<string,unknown>);window.dispatchEvent(new Event("jarvis-memory-updated"));return merged}
  const item:JarvisImportantMemory={id:crypto.randomUUID(),category:categoryFor(n),title:"Memória importante",content:clean,importance:a.score,createdAt:new Date().toISOString(),source,reason:a.reason};
  write([item,...existing]); void upsertJarvisRecord("memory", item.id, item as unknown as Record<string, unknown>); window.dispatchEvent(new Event("jarvis-memory-updated"));return item;
 }
