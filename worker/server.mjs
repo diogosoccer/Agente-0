@@ -301,7 +301,19 @@ async function generateEbook(topic){
     const meta="\n\n---\n**Metadados de produção**\n- Tema: "+topic+"\n- Fontes pesquisadas: "+sources.length+"\n- Score editorial automático: "+score+"/100\n- Estado: RASCUNHO — revisão humana necessária\n";
     const md="# "+title+"\n\n"+body+sourceBlock+meta;
     await mkdir("artifacts/ebooks",{recursive:true});
-    const file="artifacts/ebooks/"+date+"-"+ebookSlug(topic)+".md"; await writeFile(file,md,"utf8");
+    const slug=ebookSlug(topic);
+    const file="artifacts/ebooks/"+date+"-"+slug+".md"; await writeFile(file,md,"utf8");
+    const product={
+      schemaVersion:"1.0",status:"draft",title,slug,topic,createdAt:new Date().toISOString(),
+      shortDescription:"Guia prático e objetivo sobre "+topic+".",
+      longDescription:"Material educativo estruturado em etapas, checklist e plano de 7 dias. Revisão humana recomendada antes de qualquer publicação.",
+      qualityScore:score,sources:sources.map(s=>({title:s.title,url:s.url})),
+      publishing:{externalPlatform:null,requiresHumanApproval:true}
+    };
+    await writeFile("artifacts/ebooks/"+date+"-"+slug+".product.json",JSON.stringify(product,null,2),"utf8");
+    const safeTitle=title.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const salesPage="<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>"+safeTitle+"</title><style>body{font-family:system-ui;max-width:760px;margin:0 auto;padding:48px 20px;line-height:1.6}main{border:1px solid #ddd;border-radius:20px;padding:32px}h1{font-size:42px;line-height:1.1}a,button{display:inline-block;padding:12px 18px;border-radius:10px;border:1px solid #222;text-decoration:none}small{color:#666}</style></head><body><main><small>GUIA PRÁTICO</small><h1>"+safeTitle+"</h1><p>Um material direto para transformar conhecimento em prática.</p><h2>Você vai encontrar</h2><ul><li>fundamentos organizados</li><li>passos práticos</li><li>plano de 7 dias</li><li>checklist final</li></ul><p><b>Importante:</b> este arquivo é um rascunho editorial e precisa de revisão humana antes de ser vendido ou publicado.</p></main></body></html>";
+    await writeFile("artifacts/ebooks/"+date+"-"+slug+".sales.html",salesPage,"utf8");
     const now=new Date(), next=new Date(now.getTime()+86400000);
     ebookState={lastRun:now.toISOString(),nextRun:next.toISOString(),lastFile:file,lastTopic:topic,lastQuality:score,
       history:[{date:now.toISOString(),topic,file,quality:score,sources:sources.length},...(ebookState.history||[])].slice(0,30)};
