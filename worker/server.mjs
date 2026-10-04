@@ -169,6 +169,53 @@ app.post("/music/search", async (req, res) => {
   }
 });
 
+app.post("/opportunities", async (req, res) => {
+  const location = typeof req.body?.location === "string" ? req.body.location.trim() : "";
+  const categories = Array.isArray(req.body?.categories) ? req.body.categories.filter(x => typeof x === "string").slice(0, 8) : ["comércio","clínica","restaurante","salão","oficina"];
+  if (!location) return res.status(400).json({ error: "location obrigatória" });
+  if (location.length > 120) return res.status(400).json({ error: "location muito longa" });
+  try {
+    busy = true;
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    const candidates = [];
+    for (const category of categories) {
+      const query = `${category} ${location}`;
+      const target = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
+      await page.goto(target, { waitUntil: "domcontentloaded", timeout: 20000 });
+      const results = await page.locator("li.b_algo").evaluateAll(nodes => nodes.slice(0, 8).map(node => ({
+        name: node.querySelector("h2")?.textContent?.trim() || "",
+        url: node.querySelector("h2 a")?.href || "",
+        snippet: node.querySelector(".b_caption p")?.textContent?.trim() || ""
+      })).filter(x => x.name && x.url));
+      for (const result of results) {
+        const u = new URL(result.url);
+        const isDirectory = /facebook\.com|instagram\.com|tripadvisor|yelp|google\.com|linkedin\.com|telelistas|guiamais|solutudo/i.test(u.hostname);
+        const likelyOwnSite = !isDirectory && /https?:\/\//.test(result.url);
+        candidates.push({
+          id: randomUUID(),
+          name: result.name.replace(/\s+[-|].*$/, "").trim(),
+          category,
+          location,
+          sourceUrl: result.url,
+          snippet: result.snippet,
+          hasOwnSiteEvidence: likelyOwnSite,
+          opportunityScore: likelyOwnSite ? 38 : 78,
+          reason: likelyOwnSite ? "Há um domínio próprio aparente; vale auditar a qualidade antes de abordar." : "A pesquisa encontrou presença em diretórios/redes, mas não encontrou um domínio próprio entre os primeiros resultados."
+        });
+      }
+    }
+    await browser.close();
+    const unique = [...new Map(candidates.map(x => [x.name.toLowerCase(), x])).values()]
+      .sort((a,b) => b.opportunityScore - a.opportunityScore).slice(0, 30);
+    res.json({ ok: true, location, candidates: unique, methodology: "Pesquisa pública em mecanismo de busca; ausência de domínio próprio é um sinal heurístico e precisa de validação antes de contato." });
+  } catch (error) {
+    res.status(502).json({ ok: false, error: error instanceof Error ? error.message : "Falha no radar de oportunidades." });
+  } finally {
+    busy = false;
+  }
+});
+
 app.post("/research", async (req, res) => {
   const query = typeof req.body?.query === "string" ? req.body.query.trim() : "";
   if (!query) return res.status(400).json({ error: "query obrigatória" });
