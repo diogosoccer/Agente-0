@@ -26,6 +26,7 @@ export type MissionStep = {
   result?: unknown;
   error?: string;
   approvalId?: string;
+  approvalType?: "local_task" | "browser" | "computer";
   startedAt?: string;
   finishedAt?: string;
 };
@@ -250,6 +251,35 @@ export async function resumeMission(
   if (!steps.length) throw new Error("Missão sem etapas persistidas.");
   const firstIncomplete = steps.findIndex(s => s.status !== "success");
   mission.currentStep = firstIncomplete < 0 ? steps.length : firstIncomplete;
+  return runMission(mission, steps, deps);
+}
+
+export async function completeApprovedMissionStep(
+  missionId: string,
+  approvalId: string,
+  result: unknown,
+  deps: MissionRunnerDeps = {},
+) {
+  const missions = await listJarvisRecords("mission", 100);
+  const tasks = await listJarvisRecords("task", 500);
+  const missionRow = missions.find(r => r.id === missionId);
+  if (!missionRow) throw new Error("Missão não encontrada.");
+  const mission = missionRow.data as unknown as JarvisMission;
+  const steps = tasks.filter(r => (r.data as {missionId?: string})?.missionId === missionId)
+    .map(r => r.data as unknown as MissionStep).sort((a,b) => a.index-b.index);
+  const step = steps.find(s => s.approvalId === approvalId);
+  if (!step) throw new Error("Etapa de aprovação não encontrada.");
+  if (step.status === "success") return { mission, steps };
+  if (!(await verifyStep(step, result))) throw new Error("Resultado aprovado não passou na verificação.");
+  step.result = result;
+  step.status = "success";
+  step.finishedAt = now();
+  await saveStep(step);
+  await auditExecution(step.id, "step:approved", "success", "Ação aprovada e verificada.");
+  mission.currentStep = step.index + 1;
+  mission.status = "running";
+  mission.updatedAt = now();
+  await saveMission(mission);
   return runMission(mission, steps, deps);
 }
 
