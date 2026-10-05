@@ -105,6 +105,15 @@ export function buildMissionFromPlan(plan: JarvisActionPlan): {
 async function verifyStep(step: MissionStep, result: unknown) {
   if (result === undefined || result === null) return false;
   if (typeof result === "object" && result !== null && "ok" in result && (result as {ok?: boolean}).ok === false) return false;
+  if (step.action.type === "browser_action") {
+    const r = result as Record<string, unknown>;
+    if (r.ok !== true) return false;
+    if (step.action.action === "extract") return typeof r.text === "string" && r.text.trim().length > 0;
+    if (step.action.action === "screenshot") return typeof r.screenshot === "string" && r.screenshot.length > 0;
+    if (step.action.action === "fill") return r.filled === true;
+    if (step.action.action === "press") return typeof r.pressed === "string" && r.pressed.length > 0;
+    if (step.action.action === "click" || step.action.action === "navigate") return typeof r.url === "string" && r.url.length > 0;
+  }
   return true;
 }
 
