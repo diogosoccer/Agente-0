@@ -6,7 +6,13 @@ export type JarvisPlanAction =
   | { type: "inspect_site"; url: string; label: string; requiresApproval: true }
   | { type: "browser_action"; url: string; action: "navigate" | "click" | "fill" | "press" | "extract" | "screenshot"; selector?: string; value?: string; label: string; requiresApproval: true }
   | { type: "open_app"; app: string; label: string; requiresApproval: true }
+  | { type: "close_app"; app: string; label: string; requiresApproval: true }
   | { type: "open_file"; path: string; label: string; requiresApproval: true }
+  | { type: "file_search"; root?: string; query: string; limit?: number; label: string }
+  | { type: "file_read"; path: string; label: string }
+  | { type: "file_create"; path: string; content?: string; contentFromStep?: number; label: string; requiresApproval: true }
+  | { type: "file_move"; source: string; destination: string; label: string; requiresApproval: true }
+  | { type: "file_rename"; source: string; name: string; label: string; requiresApproval: true }
   | { type: "run_command"; command: "system_info" | "git_status" | "node_version" | "npm_version" | "pwd" | "list_files"; label: string; requiresApproval: true }
   | { type: "delegate"; goal: string; label: string };
 
