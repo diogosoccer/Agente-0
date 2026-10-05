@@ -60,7 +60,7 @@ export type MissionRunnerDeps = {
 
 const now = () => new Date().toISOString();
 const riskOf = (a: JarvisPlanAction): MissionRisk => {
-  if (a.type === "navigate" || a.type === "worker_health" || a.type === "research_web") return "low";
+  if (a.type === "navigate" || a.type === "worker_health" || a.type === "research_web" || a.type === "file_search" || a.type === "file_read") return "low";
   if (a.type === "delegate") return "medium";
   return "high";
 };
@@ -68,7 +68,7 @@ const riskOf = (a: JarvisPlanAction): MissionRisk => {
 const agentForAction = (action: JarvisPlanAction): AgentId => {
   if (action.type === "research_web" || action.type === "inspect_site") return "researcher";
   if (action.type === "navigate" || action.type === "open_url" || action.type === "browser_action") return "operator";
-  if (action.type === "open_app" || action.type === "open_file" || action.type === "run_command") return "operator";
+  if (action.type === "open_app" || action.type === "close_app" || action.type === "open_file" || action.type === "file_search" || action.type === "file_read" || action.type === "file_create" || action.type === "file_move" || action.type === "file_rename" || action.type === "run_command") return "operator";
   if (action.type === "delegate") return "planner";
   if (action.type === "worker_health") return "sentinel";
   return "analyst";
