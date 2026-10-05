@@ -13,6 +13,7 @@ export type LocalTask =
   | { type: "file_move"; source: string; destination: string; label?: string }
   | { type: "file_rename"; source: string; name: string; label?: string }
   | { type: "run_command"; command: "system_info" | "git_status" | "node_version" | "npm_version" | "pwd" | "list_files"; label?: string }
+  | { type: "shell_command"; command: string; label?: string }
   | { type: "worker_health"; label?: string };
 
 export type ExecutionResult = {
@@ -28,7 +29,7 @@ const base = () =>
   "http://localhost:8787";
 
 export async function requestLocalTaskApproval(task: LocalTask) {
-  const action = task.type === "run_command" ? "Executar comando local: " + task.command : task.type;
+  const action = task.type === "run_command" ? "Executar comando local: " + task.command : task.type === "shell_command" ? "Executar comando: " + task.command : task.type;
   const automatic = task.type === "worker_health" || task.type === "file_search" || task.type === "file_read";
   const risk = task.type === "run_command" || !automatic ? "high" : "low";
   return requestApproval(action, risk, task.label || action);
@@ -63,8 +64,8 @@ export async function executeApprovedLocalTask(
       return { executionId, status: "success", result: data };
     }
 
-    if (task.type === "run_command" || task.type === "worker_health") {
-      const data = task.type === "worker_health" ? await checkExecutor(root) : await runSafeLocalCommand(root, task.command);
+    if (task.type === "run_command" || task.type === "shell_command" || task.type === "worker_health") {
+      const data = task.type === "worker_health" ? await checkExecutor(root) : task.type === "run_command" ? await runSafeLocalCommand(root, task.command) : await approveAndExecuteLocalAction({ action: "run_command", command: task.command }, approvalId, executionId);
       await auditExecution(executionId, task.type, "success", JSON.stringify(data), "worker");
       return { executionId, status: "success", result: data };
     }
