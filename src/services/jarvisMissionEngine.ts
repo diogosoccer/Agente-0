@@ -403,7 +403,7 @@ export async function approveAndResumeMission(
       : step.action.type === "open_file"
         ? ({type:"open_file",value:step.action.path,label:step.action.label} as LocalTask)
         : step.action.type === "file_create"
-          ? ({type:"file_create",path:step.action.path,content:step.action.content || "",contentFromStep:step.action.contentFromStep,label:step.action.label} as LocalTask)
+          ? ({type:"file_create",path:step.action.path,content:step.action.content || (step.action.contentFromStep !== undefined ? JSON.stringify(steps[step.action.contentFromStep]?.result ?? {}, null, 2) : ""),contentFromStep:step.action.contentFromStep,label:step.action.label} as LocalTask)
           : step.action.type === "file_move"
             ? ({type:"file_move",source:step.action.source,destination:step.action.destination,label:step.action.label} as LocalTask)
             : step.action.type === "file_rename"
