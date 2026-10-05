@@ -1,0 +1,13 @@
+{
+  "name": "agente-zero-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "main": "main.cjs",
+  "description": "Desktop shell do Agente Zero",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "latest"
+  }
+}
