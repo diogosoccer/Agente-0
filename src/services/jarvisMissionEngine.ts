@@ -97,7 +97,7 @@ export function buildMissionFromPlan(plan: JarvisActionPlan): {
     risk: riskOf(action),
     attempts: 0,
     maxAttempts: riskOf(action) === "low" ? 3 : 1,
-    dependsOn: index > 0 ? ["" + index] : [],
+    dependsOn: index > 0 ? [String(index - 1)] : [],
   }));
   return { mission, steps };
 }
