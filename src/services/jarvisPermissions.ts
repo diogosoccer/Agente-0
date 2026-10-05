@@ -1,28 +1,66 @@
 import { requestApproval } from "./approvalGate";
-import type { MissionRisk } from "./jarvisMissionEngine";
 
 export type PermissionLevel = "automatic" | "confirmation" | "blocked";
+export type PermissionRisk = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export type PermissionOrigin = "planner" | "user" | "system" | "recovery" | "automation";
 
-const automatic = new Set(["worker_health", "research_web", "file_search", "file_read", "open_app"]);
-const confirmation = new Set(["open_url", "inspect_site", "browser_action", "close_app", "file_create", "file_move", "file_rename", "run_command", "shell_command", "open_file"]);
-const blocked = new Set(["delete_file", "kill_process", "credential_change", "shutdown", "format_disk"]);
+export type PermissionDecision = {
+  action: string;
+  risk: PermissionRisk;
+  resource?: string;
+  origin: PermissionOrigin;
+  reason: string;
+  requiresConfirmation: boolean;
+  allowed: boolean;
+  timestamp: string;
+  level: PermissionLevel;
+};
 
-export function permissionForAction(type: string): PermissionLevel {
-  if (blocked.has(type)) return "blocked";
-  if (confirmation.has(type)) return "confirmation";
-  return automatic.has(type) ? "automatic" : "confirmation";
+const automatic = new Set(["worker_health","research_web","file_search","file_read","open_app","navigate"]);
+const medium = new Set(["open_file","file_create","file_move","file_rename","run_command"]);
+const high = new Set(["close_app","shell_command","open_url","inspect_site","browser_action","send_email","send_message","publish","deploy","contact_prospect"]);
+const blocked = new Set(["delete_file","kill_process","credential_change","change_credentials","shutdown","format_disk","spend_money","destructive_command"]);
+
+function riskForAction(action: string): PermissionRisk {
+  if (blocked.has(action)) return "CRITICAL";
+  if (high.has(action)) return "HIGH";
+  if (medium.has(action)) return "MEDIUM";
+  return automatic.has(action) ? "LOW" : "HIGH";
 }
 
-export function riskForPermission(level: PermissionLevel): MissionRisk {
-  if (level === "blocked") return "critical";
-  if (level === "confirmation") return "high";
-  return "low";
+function levelForRisk(risk: PermissionRisk): PermissionLevel {
+  if (risk === "CRITICAL") return "blocked";
+  if (risk === "HIGH" || risk === "MEDIUM") return "confirmation";
+  return "automatic";
 }
 
-export function requestPermission(action: string, reason: string) {
-  const level = permissionForAction(action);
-  if (level === "blocked") throw new Error("Ação bloqueada pela política de segurança.");
-  if (level === "automatic") return { level, approval: null };
-  const approval = requestApproval(action, "high", reason);
-  return { level, approval };
+export function permissionForAction(action: string): PermissionLevel {
+  return levelForRisk(riskForAction(action));
+}
+
+export function riskForPermission(level: PermissionLevel): PermissionRisk {
+  if (level === "blocked") return "CRITICAL";
+  if (level === "confirmation") return "HIGH";
+  return "LOW";
+}
+
+export function evaluatePermission(action: string, options: { resource?: string; origin?: PermissionOrigin; reason?: string } = {}): PermissionDecision {
+  const risk = riskForAction(action);
+  const level = levelForRisk(risk);
+  return {
+    action, risk, resource: options.resource, origin: options.origin ?? "planner",
+    reason: options.reason ?? "Política padrão do Agente-0.",
+    requiresConfirmation: level === "confirmation",
+    allowed: level !== "blocked",
+    timestamp: new Date().toISOString(),
+    level,
+  };
+}
+
+export function requestPermission(action: string, reason: string, options: { resource?: string; origin?: PermissionOrigin } = {}) {
+  const decision = evaluatePermission(action, { ...options, reason });
+  if (!decision.allowed) throw new Error("Ação bloqueada pela política de segurança.");
+  if (!decision.requiresConfirmation) return { decision, approval: null };
+  const approval = requestApproval(action, decision.risk === "MEDIUM" ? "medium" : "high", reason);
+  return { decision, approval };
 }
