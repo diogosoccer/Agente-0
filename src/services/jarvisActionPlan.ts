@@ -41,7 +41,7 @@ export async function createActionPlanWithAI(
     if (!response.ok) return null;
     const data = await response.json();
     if (!data?.plan || !Array.isArray(data.plan.actions)) return null;
-    return {
+    return enrichPersonalPlan({
       id: typeof data.plan.id === "string" ? data.plan.id : crypto.randomUUID(),
       input,
       summary: typeof data.plan.summary === "string" ? data.plan.summary : "Plano criado.",
@@ -50,7 +50,7 @@ export async function createActionPlanWithAI(
       reason: typeof data.plan.reason === "string" ? data.plan.reason : undefined,
       requiresApproval: Boolean(data.plan.requiresApproval),
       actions: data.plan.actions,
-    };
+    }, input);
   } catch {
     return null;
   }
@@ -104,7 +104,6 @@ function enrichPersonalPlan(plan: JarvisActionPlan, input: string): JarvisAction
   return {
     ...plan,
     actions,
-    totalSteps: actions.length,
     requiresApproval: plan.requiresApproval || actions.some(a => "requiresApproval" in a && a.requiresApproval)
   };
 }
