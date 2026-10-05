@@ -135,7 +135,7 @@ async function verifyStep(step: MissionStep, result: unknown) {
 
 function dependenciesSatisfied(step: MissionStep, steps: MissionStep[]) { return step.dependsOn.every(dep => { const byIndex = steps.find(s => String(s.index) === dep); return Boolean(byIndex && byIndex.status === "success"); }); }
 
-async function runStep(step: MissionStep, deps: MissionRunnerDeps) {
+async function runStep(step: MissionStep, deps: MissionRunnerDeps, steps: MissionStep[] = []) {
   const action = step.action;
   if (action.type === "navigate") {
     deps.navigate?.(action.path);
@@ -165,10 +165,44 @@ async function runStep(step: MissionStep, deps: MissionRunnerDeps) {
     await saveStep(step);
     return { waitingApproval: true, approvalId: approval.id };
   }
+  if (action.type === "file_search" || action.type === "file_read") {
+    const local: LocalTask = action.type === "file_search"
+      ? { type: "file_search", root: action.root, query: action.query, limit: action.limit, label: action.label }
+      : { type: "file_read", value: action.path, label: action.label };
+    const result = await executeApprovedLocalTask("", local);
+    if (result.status !== "success") throw new Error(result.error || "Executor local falhou.");
+    return result;
+  }
   if (action.type === "open_app") {
     const approval = deps.requestApproval
       ? await deps.requestApproval(step)
       : await requestLocalTaskApproval({ type: "open_app", value: action.app, label: action.label });
+    step.approvalId = approval.id;
+    step.approvalType = "local_task";
+    step.status = "waiting_approval";
+    await saveStep(step);
+    return { waitingApproval: true, approvalId: approval.id };
+  }
+  if (action.type === "close_app") {
+    const approval = deps.requestApproval
+      ? await deps.requestApproval(step)
+      : await requestLocalTaskApproval({ type: "close_app", value: action.app, label: action.label });
+    step.approvalId = approval.id;
+    step.approvalType = "local_task";
+    step.status = "waiting_approval";
+    await saveStep(step);
+    return { waitingApproval: true, approvalId: approval.id };
+  }
+  if (action.type === "file_create" || action.type === "file_move" || action.type === "file_rename") {
+    const approval = deps.requestApproval
+      ? await deps.requestApproval(step)
+      : await requestLocalTaskApproval(
+          action.type === "file_create"
+            ? { type: "file_create", path: action.path, content: action.content, contentFromStep: action.contentFromStep, label: action.label }
+            : action.type === "file_move"
+              ? { type: "file_move", source: action.source, destination: action.destination, label: action.label }
+              : { type: "file_rename", source: action.source, name: action.name, label: action.label }
+        );
     step.approvalId = approval.id;
     step.approvalType = "local_task";
     step.status = "waiting_approval";
@@ -364,11 +398,19 @@ export async function approveAndResumeMission(
   if (!step) throw new Error("Etapa de aprovação não encontrada.");
   const local = step.action.type === "open_app"
     ? ({type:"open_app",value:step.action.app,label:step.action.label} as LocalTask)
-    : step.action.type === "open_file"
-      ? ({type:"open_file",value:step.action.path,label:step.action.label} as LocalTask)
-      : step.action.type === "run_command"
-        ? ({type:"run_command",command:step.action.command,label:step.action.label} as LocalTask)
-        : null;
+    : step.action.type === "close_app"
+      ? ({type:"close_app",value:step.action.app,label:step.action.label} as LocalTask)
+      : step.action.type === "open_file"
+        ? ({type:"open_file",value:step.action.path,label:step.action.label} as LocalTask)
+        : step.action.type === "file_create"
+          ? ({type:"file_create",path:step.action.path,content:step.action.content || "",contentFromStep:step.action.contentFromStep,label:step.action.label} as LocalTask)
+          : step.action.type === "file_move"
+            ? ({type:"file_move",source:step.action.source,destination:step.action.destination,label:step.action.label} as LocalTask)
+            : step.action.type === "file_rename"
+              ? ({type:"file_rename",source:step.action.source,name:step.action.name,label:step.action.label} as LocalTask)
+              : step.action.type === "run_command"
+                ? ({type:"run_command",command:step.action.command,label:step.action.label} as LocalTask)
+                : null;
   if (!local) throw new Error("Aprovação não corresponde a uma tarefa local.");
   const result = deps.executeApprovedLocal
     ? await deps.executeApprovedLocal(step, approvalId)
