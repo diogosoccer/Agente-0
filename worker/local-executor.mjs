@@ -152,7 +152,7 @@ async function handle(req, res) {
     }
 
     if (action === "file_search") {
-      const results = await searchFiles(expandPath(data.root || process.cwd()), data.query || "", Math.min(Number(data.limit) || 50, 100));
+      const results = await searchFiles(expandPath(data.root || process.env.USERPROFILE || process.cwd()), data.query || "", Math.min(Number(data.limit) || 50, 100));
       return json(res, 200, { ok: true, action, results, count: results.length });
     }
 
