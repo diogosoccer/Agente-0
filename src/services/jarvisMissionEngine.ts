@@ -5,6 +5,7 @@ import { auditExecution } from "./jarvisAudit";
 import { executeApprovedLocalTask, requestLocalTaskApproval, type LocalTask } from "./jarvisExecution";
 import { listJarvisRecords, upsertJarvisRecord } from "./jarvisPersistence";
 import { chooseRecovery } from "./jarvisRecovery";
+import { withTimeout } from "../core/stability";
 
 export type MissionStatus =
   | "pending" | "running" | "waiting_approval" | "verifying"
@@ -130,6 +131,15 @@ async function verifyStep(step: MissionStep, result: unknown) {
     if (step.action.action === "press") return typeof r.pressed === "string" && r.pressed.length > 0;
     if (step.action.action === "click" || step.action.action === "navigate") return typeof r.url === "string" && r.url.length > 0;
   }
+  if (step.action.type === "worker_health") {
+    const r = result as Record<string, unknown>;
+    return r.status === "connected" || r.ok === true;
+  }
+  const locallyVerified = new Set<JarvisPlanAction["type"]>([
+    "open_app", "open_file", "file_search", "file_read",
+    "file_create", "file_move", "file_rename", "run_command", "shell_command",
+  ]);
+  if (locallyVerified.has(step.action.type)) return (result as Record<string, unknown>).ok === true;
   return true;
 }
 
@@ -241,8 +251,16 @@ export async function runMission(
   steps: MissionStep[],
   deps: MissionRunnerDeps = {},
 ): Promise<{ mission: JarvisMission; steps: MissionStep[] }> {
+  cancelledMissions.delete(mission.id);
   await transition(mission, "running");
   for (let i = mission.currentStep; i < steps.length; i++) {
+    if (cancelledMissions.has(mission.id)) {
+      mission.status = "cancelled";
+      mission.updatedAt = now();
+      await saveMission(mission);
+      await auditExecution(mission.id, "mission:cancelled", "blocked", "Execução interrompida pelo usuário.");
+      return { mission, steps };
+    }
     const step = steps[i];
     mission.currentStep = i;
     if (!dependenciesSatisfied(step, steps)) { step.status = "skipped"; step.error = "Dependência anterior não concluída."; await saveStep(step); mission.status = "failed"; mission.error = step.error; mission.updatedAt = now(); await saveMission(mission); await auditExecution(step.id, "step:" + step.action.type, "failed", step.error); return { mission, steps }; }
@@ -267,7 +285,7 @@ export async function runMission(
 
       const result = step.action.type === "research_web"
         ? specialist.result
-        : await runStep(step, deps);
+        : await withTimeout(runStep(step, deps, steps), 45000, "Etapa " + (step.index + 1));
       if (result && typeof result === "object" && "waitingApproval" in result) {
         mission.status = "waiting_approval";
         mission.updatedAt = now();
@@ -445,6 +463,7 @@ export async function createAndRunMission(
 }
 
 export async function cancelMission(missionId: string) {
+  cancelledMissions.add(missionId);
   const missions = await listJarvisRecords("mission", 100);
   const row = missions.find(r => r.id === missionId);
   if (!row) throw new Error("Missão não encontrada.");
