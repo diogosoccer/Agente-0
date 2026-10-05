@@ -131,7 +131,7 @@ async function verifyStep(step: MissionStep, result: unknown) {
 
 function dependenciesSatisfied(step: MissionStep, steps: MissionStep[]) { return step.dependsOn.every(dep => { const byIndex = steps.find(s => String(s.index) === dep); return Boolean(byIndex && byIndex.status === "success"); }); }
 
-async function runStep(step: MissionStep, deps: MissionRunnerDeps) {
+async function runStep(step: MissionStep, deps: MissionRunnerDeps, specialistResult?: { result?: unknown }) {
   const action = step.action;
   if (action.type === "navigate") {
     deps.navigate?.(action.path);
@@ -145,6 +145,7 @@ async function runStep(step: MissionStep, deps: MissionRunnerDeps) {
     return result;
   }
   if (action.type === "research_web") {
+    if (specialistResult?.result !== undefined) return specialistResult.result;
     if (!deps.research) throw new Error("Callback de pesquisa não configurado.");
     return deps.research(action.query);
   }
@@ -211,7 +212,7 @@ export async function runMission(
     await auditExecution(step.id, "step:" + step.action.type, "started", step.action.label);
 
     try {
-      const result = await runStep(step, deps);
+      const result = await runStep(step, deps, specialistResult);
       if (result && typeof result === "object" && "waitingApproval" in result) {
         mission.status = "waiting_approval";
         mission.updatedAt = now();
