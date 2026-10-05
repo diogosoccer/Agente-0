@@ -2,7 +2,7 @@ name: Verify
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "evolution/**"]
   pull_request:
 
 permissions:
