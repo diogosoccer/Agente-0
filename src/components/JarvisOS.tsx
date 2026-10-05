@@ -5,7 +5,7 @@ import{multiAgentRuntime}from"../services/agentRuntime";
 import{discoverUnknown}from"../services/jarvisUnknown";
 import{studyCapabilityGap}from"../services/jarvisEvolution";
 import{startJarvisAmbient,stopJarvisAmbient}from"../services/jarvisAmbient";
-import{rememberIfImportant}from"../services/jarvisMemory";import{runComputerAction}from"../services/executor";import{createGoal,simulateExecution}from"../services/jarvisAdvanced";import{createMission,updateMission}from"../services/jarvisIntelligence";import{jarvisCore}from"../core";import{researchOpportunities,saveOpportunityCandidates}from"../services/opportunityRadar";
+import{rememberIfImportant,hydrateImportantMemories}from"../services/jarvisMemory";import{runComputerAction}from"../services/executor";import{createGoal,simulateExecution}from"../services/jarvisAdvanced";import{createMission,updateMission}from"../services/jarvisIntelligence";import{jarvisCore}from"../core";import{researchOpportunities,saveOpportunityCandidates}from"../services/opportunityRadar";
 
 type Props={go:(p:string)=>void;addApproval:(a:any)=>void};
 type Log={id:string;time:string;text:string;kind:string};
@@ -17,7 +17,7 @@ const cinematicTone=()=>{try{const C=window.AudioContext||(window as any).webkit
 export function JarvisOS({go,addApproval}:Props){
  const[status,setStatus]=useState("READY");const[booting,setBooting]=useState(true);const[workerOnline,setWorkerOnline]=useState(false);const[plan,setPlan]=useState<JarvisActionPlan|null>(null);const[logs,setLogs]=useState<Log[]>(load);const[thinking,setThinking]=useState(false);const[time,setTime]=useState(new Date());const[voice,setVoice]=useState(false);const[awaitingCommand,setAwaitingCommand]=useState(false);const[ambient,setAmbient]=useState(()=>localStorage.getItem("jarvis.ambient")!=="off");const[music,setMusic]=useState<{title:string;videoId:string}|null>(null);const[musicLoading,setMusicLoading]=useState(false);const[screen,setScreen]=useState<string|null>(null);
  const[name,setName]=useState(()=>localStorage.getItem("jarvis.user.name")||"");const[identityOpen,setIdentityOpen]=useState(()=>!localStorage.getItem("jarvis.identity.setup"));const[faceReady,setFaceReady]=useState(false);const[faceChecking,setFaceChecking]=useState(false);const[stream,setStream]=useState<MediaStream|null>(null);const videoRef=useRef<HTMLVideoElement>(null);
- useEffect(()=>{const id=setInterval(()=>setTime(new Date()),1000);const boot=setTimeout(()=>{setBooting(false);cinematicTone()},2400);return()=>{clearInterval(id);clearTimeout(boot)}},[]);
+ useEffect(()=>{const id=setInterval(()=>setTime(new Date()),1000);const boot=setTimeout(()=>{setBooting(false);cinematicTone()},2400);void hydrateImportantMemories();void jarvisCore.hydrate();return()=>{clearInterval(id);clearTimeout(boot)}},[]);
  useEffect(()=>{let live=true;const check=async()=>{const base=localStorage.getItem("az:executorUrl")||"http://localhost:8787";try{const r=await fetch(base.replace(/\/$/,"")+"/health",{signal:AbortSignal.timeout(2200)});if(live)setWorkerOnline(r.ok)}catch{if(live)setWorkerOnline(false)}};check();const id=setInterval(check,15000);return()=>{live=false;clearInterval(id)}},[]);
  const recognitionRef=useRef<any>(null);const voiceActiveRef=useRef(false);const awaitingCommandRef=useRef(false);
  useEffect(()=>()=>{voiceActiveRef.current=false;try{recognitionRef.current?.stop()}catch{}},[]);
