@@ -55,3 +55,15 @@ export async function approveAndExecuteLocalAction(action: LocalAction, _approva
   if (typeof approval.approvalToken !== "string") throw new Error("Executor local não gerou token de execução.");
   return post("/action", { id, ...action, approvalToken: approval.approvalToken });
 }
+
+export type VerificationStatus = "EXECUTED" | "VERIFIED" | "FAILED" | "UNCERTAIN";
+
+export async function verifyLocalAction(action: LocalAction) {
+  return post("/verify", action as unknown as Record<string, unknown>, 10000) as Promise<{
+    ok: boolean;
+    status: VerificationStatus;
+    verified: boolean;
+    evidence?: unknown;
+    error?: string;
+  }>;
+}
