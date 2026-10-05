@@ -129,7 +129,7 @@ async function runStep(step: MissionStep, deps: MissionRunnerDeps) {
     if (!deps.delegate) throw new Error("Callback de delegação não configurado.");
     return deps.delegate(action.goal);
   }
-  if (action.type === "open_url" || action.type === "inspect_site") {
+  if (action.type === "open_url" || action.type === "inspect_site" || action.type === "browser_action") {
     if (!deps.requestApproval) throw new Error("Ação externa requer aprovação explícita.");
     const approval = await deps.requestApproval(step);
     step.approvalId = approval.id;
