@@ -5,6 +5,7 @@ import { auditExecution } from "./jarvisAudit";
 import { executeApprovedLocalTask, requestLocalTaskApproval, type LocalTask } from "./jarvisExecution";
 import { listJarvisRecords, upsertJarvisRecord } from "./jarvisPersistence";
 import { chooseRecovery } from "./jarvisRecovery";
+import { evaluatePermission, type PermissionDecision } from "./jarvisPermissions";
 
 export type MissionStatus =
   | "pending" | "running" | "waiting_approval" | "verifying"
@@ -35,6 +36,7 @@ export type MissionStep = {
   finishedAt?: string;
   specialistSummary?: string;
   recoveryStrategy?: string;
+  permission?: PermissionDecision;
 };
 
 export type JarvisMission = {
@@ -134,6 +136,19 @@ async function verifyStep(step: MissionStep, result: unknown) {
 }
 
 function dependenciesSatisfied(step: MissionStep, steps: MissionStep[]) { return step.dependsOn.every(dep => { const byIndex = steps.find(s => String(s.index) === dep); return Boolean(byIndex && byIndex.status === "success"); }); }
+
+function permissionResource(action: JarvisPlanAction): string | undefined {
+  switch (action.type) {
+    case "open_app": case "close_app": return action.app;
+    case "open_file": case "file_read": return action.path;
+    case "file_create": return action.path;
+    case "file_move": return action.source + " -> " + action.destination;
+    case "file_rename": return action.source + " -> " + action.name;
+    case "shell_command": case "run_command": return action.command;
+    case "open_url": case "inspect_site": case "browser_action": return action.url;
+    default: return undefined;
+  }
+}
 
 async function runStep(step: MissionStep, deps: MissionRunnerDeps, steps: MissionStep[] = []) {
   const action = step.action;
@@ -246,6 +261,26 @@ export async function runMission(
     const step = steps[i];
     mission.currentStep = i;
     if (!dependenciesSatisfied(step, steps)) { step.status = "skipped"; step.error = "Dependência anterior não concluída."; await saveStep(step); mission.status = "failed"; mission.error = step.error; mission.updatedAt = now(); await saveMission(mission); await auditExecution(step.id, "step:" + step.action.type, "failed", step.error); return { mission, steps }; }
+    const permission = evaluatePermission(step.action.type, {
+      resource: permissionResource(step.action),
+      origin: step.recoveryStrategy ? "recovery" : "planner",
+      reason: "Ação planejada para esta etapa da missão.",
+    });
+    step.permission = permission;
+    step.risk = permission.risk.toLowerCase() as MissionRisk;
+    await saveStep(step);
+    await auditExecution(step.id, "permission:" + step.action.type, permission.allowed ? "success" : "blocked", JSON.stringify(permission));
+    if (!permission.allowed) {
+      step.status = "failed";
+      step.error = "Ação bloqueada pela política de segurança.";
+      await saveStep(step);
+      mission.status = "failed";
+      mission.error = step.error;
+      mission.updatedAt = now();
+      await saveMission(mission);
+      return { mission, steps };
+    }
+
     step.status = "running";
     step.attempts += 1;
     step.startedAt = now();
