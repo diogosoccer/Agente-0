@@ -52,6 +52,7 @@ In another terminal:
 ```bash
 cd worker
 npm start
+```
 
 Em outro terminal, para o executor local:
 
@@ -113,4 +114,4 @@ Examples:
 
 ## Important
 
-This branch is a preparation layer. It does not claim that the browser alone can control the entire computer. Full desktop control requires the local Node bridge and explicit OS integrations.
+O runtime agora possui uma ponte local real para ações de computador e arquivos. A interface web continua sem acesso direto ao sistema: o controle acontece pelo worker local, com permissões, tokens de aprovação e auditoria.
