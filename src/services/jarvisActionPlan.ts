@@ -64,7 +64,7 @@ function enrichPersonalPlan(plan: JarvisActionPlan, input: string): JarvisAction
 
   const add = (action: JarvisPlanAction) => actions.push(action);
 
-  const shell = input.match(/(?:execute|executar|rode|rodar|run)\\s+(?:o\\s+)?comando\\s+["“](.+?)["”]\\s*$/i);
+  const shell = input.match(/(?:execute|executar|rode|rodar|run)\s+(?:o\s+)?comando\s+["“](.+?)["”]\s*$/i);
   if (shell && !actions.some(a => a.type === "shell_command")) {
     add({ type: "shell_command", command: shell[1].trim(), label: "Executar comando solicitado", requiresApproval: true });
   }
