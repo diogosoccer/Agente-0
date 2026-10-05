@@ -28,7 +28,7 @@ for (const token of ["chooseRecovery", "verification:input", "specialistSummary"
 }
 
 const worker = await readFile("worker/server.mjs", "utf8");
-for (const token of ["/health", "/browser/action", "/screen/capture", "/vision/analyze", "/command/execute"]) {
+for (const token of ["/health", "/browser/action", "/screen/capture", "/screen/analyze", "/vision/analyze", "/command/execute"]) {
   if (!worker.includes(token)) throw new Error("Endpoint do Worker ausente: " + token);
 }
 
