@@ -103,3 +103,12 @@ export async function openLocalFile(baseUrl: string, path: string) {
   if (!response.ok) throw new Error(data?.error || "Falha ao abrir arquivo.");
   return data;
 }
+
+export type BrowserAction = "navigate" | "click" | "fill" | "press" | "extract" | "screenshot";
+export async function runBrowserAction(baseUrl:string, task:{id:string;url:string;action:BrowserAction;selector?:string;value?:string}){
+  const root=baseUrl.replace(/\/$/,"");
+  const response=await fetch(root+"/browser/action",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(task),signal:AbortSignal.timeout(30000)});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data?.error||"Falha na automação web.");
+  return data;
+}
