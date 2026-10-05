@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "defaultPolicy": "deny",
   "approvalRequired": [
     "send_email",
@@ -19,6 +19,9 @@
     "search_web",
     "open_app",
     "read_selected_folder",
-    "create_draft"
+    "create_draft",
+    "open_file",
+    "open_folder",
+    "run_safe_command"
   ]
 }
