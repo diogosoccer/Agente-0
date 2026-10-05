@@ -8,6 +8,7 @@ import process from "node:process";
 const port = Number(process.env.LOCAL_EXECUTOR_PORT || 8788);
 const approvalTokens = new Map();
 const MAX_BODY = 2 * 1024 * 1024;
+function expandPath(value) { return String(value || "").replace(/%([^%]+)%/g, (_, key) => process.env[key] || `%${key}%`); }
 
 const PERMISSIONS = {
   automatic: new Set(["open_app", "health", "file_search", "file_read"]),
@@ -151,12 +152,12 @@ async function handle(req, res) {
     }
 
     if (action === "file_search") {
-      const results = await searchFiles(data.root || process.cwd(), data.query || "", Math.min(Number(data.limit) || 50, 100));
+      const results = await searchFiles(expandPath(data.root || process.cwd()), data.query || "", Math.min(Number(data.limit) || 50, 100));
       return json(res, 200, { ok: true, action, results, count: results.length });
     }
 
     if (action === "file_read") {
-      const filePath = String(data.path || "");
+      const filePath = expandPath(data.path);
       const content = await fs.readFile(filePath, "utf8");
       return json(res, 200, { ok: true, action, path: filePath, content: content.slice(0, 200000) });
     }
@@ -169,14 +170,14 @@ async function handle(req, res) {
     }
 
     if (action === "file_move") {
-      const source = String(data.source || ""), destination = String(data.destination || "");
+      const source = expandPath(data.source), destination = expandPath(data.destination);
       await fs.mkdir(path.dirname(destination), { recursive: true });
       await fs.rename(source, destination);
       return json(res, 200, { ok: true, action, source, destination });
     }
 
     if (action === "file_rename") {
-      const source = String(data.source || ""), name = String(data.name || "");
+      const source = expandPath(data.source), name = String(data.name || "");
       if (!name || name.includes("\\") || name.includes("/")) throw new Error("Novo nome inválido.");
       const destination = path.join(path.dirname(source), name);
       await fs.rename(source, destination);
