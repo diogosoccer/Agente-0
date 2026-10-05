@@ -1,5 +1,6 @@
 import type { JarvisActionPlan, JarvisPlanAction } from "./jarvisActionPlan";
 import type { AgentId } from "./agentOrchestrator";
+import { multiAgentRuntime } from "./agentRuntime";
 import { auditExecution } from "./jarvisAudit";
 import { executeApprovedLocalTask, requestLocalTaskApproval, type LocalTask } from "./jarvisExecution";
 import { listJarvisRecords, upsertJarvisRecord } from "./jarvisPersistence";
@@ -31,6 +32,7 @@ export type MissionStep = {
   approvalType?: "local_task" | "browser" | "computer";
   startedAt?: string;
   finishedAt?: string;
+  specialistSummary?: string;
 };
 
 export type JarvisMission = {
@@ -211,7 +213,20 @@ export async function runMission(
     await auditExecution(step.id, "step:" + step.action.type, "started", step.action.label);
 
     try {
-      const result = await runStep(step, deps);
+      const specialistGoal = step.action.type === "research_web"
+        ? step.action.query
+        : step.action.type === "delegate"
+          ? step.action.goal
+          : step.action.label;
+      const specialist = await multiAgentRuntime.executeMissionSpecialist(step.agent, specialistGoal);
+      step.specialistSummary = specialist.summary;
+      await saveStep(step);
+      await auditExecution(step.id, "specialist:" + step.agent, specialist.ok ? "success" : "failed", specialist.summary);
+      if (!specialist.ok) throw new Error(specialist.error || "Especialista não concluiu a etapa.");
+
+      const result = step.action.type === "research_web"
+        ? specialist.result
+        : await runStep(step, deps);
       if (result && typeof result === "object" && "waitingApproval" in result) {
         mission.status = "waiting_approval";
         mission.updatedAt = now();
