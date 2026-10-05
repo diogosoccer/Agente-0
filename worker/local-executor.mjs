@@ -64,13 +64,30 @@ function consume(token, task) {
 }
 
 function run(command, args, options = {}) {
+  const timeoutMs = Math.max(1000, Math.min(Number(options.timeoutMs) || 30000, 120000));
+  const spawnOptions = { windowsHide: true, ...options };
+  delete spawnOptions.timeoutMs;
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { windowsHide: true, ...options });
-    let stdout = "", stderr = "";
+    const child = spawn(command, args, spawnOptions);
+    let stdout = "", stderr = "", settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      try { child.kill(); } catch {}
+      reject(new Error(`Comando excedeu o tempo limite de ${timeoutMs}ms.`));
+    }, timeoutMs);
     child.stdout?.on("data", d => stdout += d.toString());
     child.stderr?.on("data", d => stderr += d.toString());
-    child.on("error", reject);
-    child.on("close", code => resolve({ code: code ?? -1, stdout, stderr }));
+    child.on("error", error => {
+      if (!settled) { settled = true; clearTimeout(timer); reject(error); }
+    });
+    child.on("close", code => {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timer);
+        resolve({ code: code ?? -1, stdout, stderr });
+      }
+    });
   });
 }
 
