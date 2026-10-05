@@ -174,14 +174,9 @@ async function runStep(step: MissionStep, deps: MissionRunnerDeps, steps: Missio
     return result;
   }
   if (action.type === "open_app") {
-    const approval = deps.requestApproval
-      ? await deps.requestApproval(step)
-      : await requestLocalTaskApproval({ type: "open_app", value: action.app, label: action.label });
-    step.approvalId = approval.id;
-    step.approvalType = "local_task";
-    step.status = "waiting_approval";
-    await saveStep(step);
-    return { waitingApproval: true, approvalId: approval.id };
+    const result = await executeApprovedLocalTask("", { type: "open_app", value: action.app, label: action.label });
+    if (result.status !== "success") throw new Error(result.error || "Não foi possível abrir o aplicativo.");
+    return result;
   }
   if (action.type === "close_app") {
     const approval = deps.requestApproval
