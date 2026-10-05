@@ -74,6 +74,8 @@ if(normalized.includes("noticias")||normalized.includes("notícias")){await rese
         const execution =
           a.type==="open_url"||a.type==="inspect_site"
             ? {type:a.type,url:a.url}
+            : a.type==="browser_action"
+              ? {type:"browser_action",url:a.url,action:a.action,selector:a.selector,value:a.value}
             : a.type==="open_app"
               ? {type:"computer",action:"open_app",value:a.app}
               : a.type==="open_file"
