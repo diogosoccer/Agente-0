@@ -418,6 +418,34 @@ app.post("/approve", (req, res) => {
   res.json({ ok: true, approvalToken: token });
 });
 
+const browserActions=new Set(["navigate","click","fill","press","extract","screenshot"]);
+app.post("/browser/approve",(req,res)=>{
+  const task=req.body||{};
+  if(!task.id||!browserActions.has(task.action)||typeof task.url!=="string")return res.status(400).json({error:"Ação web inválida."});
+  try{const u=new URL(task.url);if(!["http:","https:"].includes(u.protocol))throw new Error("URL inválida.");}catch{return res.status(400).json({error:"URL inválida."});}
+  if(typeof task.selector==="string"&&task.selector.length>500)return res.status(400).json({error:"Seletor muito longo."});
+  if(typeof task.value==="string"&&task.value.length>5000)return res.status(400).json({error:"Valor muito longo."});
+  const token=randomUUID();approvalTokens.set(token,{id:task.id,type:"browser-action",action:task.action,url:task.url,selector:task.selector||"",value:task.value||"",createdAt:Date.now()});setTimeout(()=>approvalTokens.delete(token),5*60*1000);res.json({ok:true,approvalToken:token});
+});
+app.post("/browser/action",async(req,res)=>{
+  const task=req.body||{};const saved=approvalTokens.get(task.approvalToken);const selector=typeof task.selector==="string"?task.selector:"";const value=typeof task.value==="string"?task.value:"";
+  if(!saved||saved.id!==task.id||saved.type!=="browser-action"||saved.action!==task.action||saved.url!==task.url||saved.selector!==selector||saved.value!==value)return res.status(403).json({error:"Token de automação web inválido ou expirado."});
+  approvalTokens.delete(task.approvalToken);
+  try{
+    const url=new URL(task.url);if(!["http:","https:"].includes(url.protocol))throw new Error("URL inválida.");
+    busy=true;const browser=await chromium.launch({headless:true});const page=await browser.newPage();await page.goto(url.toString(),{waitUntil:"domcontentloaded",timeout:20000});
+    let result={ok:true,action:task.action,url:page.url(),title:await page.title()};
+    if(task.action==="navigate"){result.url=page.url();}
+    else if(task.action==="click"){if(!selector)throw new Error("Seletor obrigatório.");await page.locator(selector).first().click({timeout:10000});await page.waitForLoadState("domcontentloaded",{timeout:5000}).catch(()=>{});result.url=page.url();}
+    else if(task.action==="fill"){if(!selector)throw new Error("Seletor obrigatório.");await page.locator(selector).first().fill(value,{timeout:10000});result.filled=true;}
+    else if(task.action==="press"){if(!selector)throw new Error("Seletor obrigatório.");await page.locator(selector).first().press(value||"Enter",{timeout:10000});result.pressed=value||"Enter";}
+    else if(task.action==="extract"){result.text=(await page.locator(selector||"body").innerText({timeout:10000})).slice(0,10000);}
+    else if(task.action==="screenshot"){await mkdir("artifacts",{recursive:true});const file="artifacts/browser-"+task.id+".png";await page.screenshot({path:file,fullPage:true});result.screenshot=file;}
+    await browser.close();res.json(result);
+  }catch(error){res.status(500).json({ok:false,error:error instanceof Error?error.message:"Falha na automação web."});}
+  finally{busy=false;}
+});
+
 app.post("/tasks", async (req, res) => {
   const task = req.body;
   if (!task?.approvalToken || !consumeApproval(task.approvalToken, task)) return res.status(403).json({ error: "Token de aprovação inválido ou expirado." });
