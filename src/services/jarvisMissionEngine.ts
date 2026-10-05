@@ -4,6 +4,7 @@ import { multiAgentRuntime } from "./agentRuntime";
 import { auditExecution } from "./jarvisAudit";
 import { executeApprovedLocalTask, requestLocalTaskApproval, type LocalTask } from "./jarvisExecution";
 import { listJarvisRecords, upsertJarvisRecord } from "./jarvisPersistence";
+import { chooseRecovery } from "./jarvisRecovery";
 
 export type MissionStatus =
   | "pending" | "running" | "waiting_approval" | "verifying"
@@ -33,6 +34,7 @@ export type MissionStep = {
   startedAt?: string;
   finishedAt?: string;
   specialistSummary?: string;
+  recoveryStrategy?: string;
 };
 
 export type JarvisMission = {
@@ -264,8 +266,16 @@ export async function runMission(
       await auditExecution(step.id, "step:" + step.action.type, "failed", message);
 
       if (step.attempts < step.maxAttempts) {
+        const recovery = chooseRecovery(step);
+        if (recovery) {
+          step.action = recovery.action;
+          step.recoveryStrategy = recovery.strategy;
+          step.specialistSummary = undefined;
+          await auditExecution(step.id, "recovery:strategy", "started", recovery.strategy);
+        }
         step.status = "pending";
         mission.status = "recovering";
+        mission.error = message;
         mission.updatedAt = now();
         await saveMission(mission);
         await saveStep(step);
