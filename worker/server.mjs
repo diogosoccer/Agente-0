@@ -433,20 +433,20 @@ app.post("/computer/action", async (req, res) => {
       spawn(target, [], { detached:true, stdio:"ignore", windowsHide:true }).unref();
     } else if (action === "type") {
       const escaped = value.replace(/[{}+^%~()[\]]/g, ch => "{" + ch + "}");
-      await ps(\`$ws=New-Object -ComObject WScript.Shell; $ws.SendKeys('\${escaped.replace(/'/g,"''")}')\`);
+      await ps("$ws=New-Object -ComObject WScript.Shell; $ws.SendKeys(" + JSON.stringify(escaped) + ")");
     } else {
       const normalized = value.toLowerCase().replace(/\s+/g,"");
       const keyMap = { enter:"ENTER", return:"ENTER", tab:"TAB", esc:"ESC", escape:"ESC", space:"SPACE", backspace:"BACKSPACE", delete:"DELETE", left:"LEFT", right:"RIGHT", up:"UP", down:"DOWN", home:"HOME", end:"END", f1:"F1", f2:"F2", f3:"F3", f4:"F4", f5:"F5", f6:"F6", f7:"F7", f8:"F8", f9:"F9", f10:"F10", f11:"F11", f12:"F12" };
       if (action === "key") {
         const key = keyMap[normalized] || (normalized.length === 1 ? normalized : null);
         if (!key) return res.status(400).json({ error:"Tecla não permitida." });
-        await ps(\`$ws=New-Object -ComObject WScript.Shell; $ws.SendKeys('\${"{" + key + "}"}')\`);
+        await ps("$ws=New-Object -ComObject WScript.Shell; $ws.SendKeys(" + JSON.stringify("{" + key + "}") + ")");
       } else if (action === "hotkey") {
         const parts = normalized.split("+").filter(Boolean);
         const mods = { ctrl:"^", control:"^", alt:"%", shift:"+", win:"#", windows:"#", cmd:"#" };
         const keys = parts.map(x => mods[x] || (keyMap[x] ? "{" + keyMap[x] + "}" : x.length === 1 ? x : null));
         if (keys.some(x => !x)) return res.status(400).json({ error:"Atalho não permitido." });
-        await ps(\`$ws=New-Object -ComObject WScript.Shell; $ws.SendKeys('\${keys.join("").replace(/'/g,"''")}')\`);
+        await ps("$ws=New-Object -ComObject WScript.Shell; $ws.SendKeys(" + JSON.stringify(keys.join("")) + ")");
       }
     }
     res.json({ ok:true, action, value, platform:process.platform });
