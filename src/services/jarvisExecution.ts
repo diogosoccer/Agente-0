@@ -1,5 +1,5 @@
 import { auditExecution } from "./jarvisAudit";
-import { checkExecutor, runComputerAction, type ComputerAction } from "./executor";
+import { checkExecutor, runComputerAction, openLocalFile, runSafeLocalCommand } from "./executor";
 import { requestApproval, assertApproved } from "./approvalGate";
 
 export type LocalTask =
@@ -48,14 +48,9 @@ export async function executeApprovedLocalTask(
       return { executionId, status: "success", result };
     }
 
-    const response = await fetch(root.replace(/\/$/, "") + "/computer/file-or-command", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ executionId, approvalId, type: task.type, value: task.value }),
-      signal: AbortSignal.timeout(15000),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data?.error || "Worker recusou a tarefa local.");
+    const data = task.type === "open_file"
+      ? await openLocalFile(root, task.value)
+      : await runSafeLocalCommand(root, task.command);
 
     await auditExecution(executionId, task.type, "success", JSON.stringify(data), "worker");
     return { executionId, status: "success", result: data };
