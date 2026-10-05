@@ -89,11 +89,11 @@ app.post("/plan",async(req,res)=>{
     if(localRaw){
       try {
         const parsed=JSON.parse(localRaw.replace(/^\`\`\`json\s*|\s*\`\`\`$/g,"")); const plan=parsed?.plan;
-        const allowed=new Set(["navigate","worker_health","research_web","open_url","inspect_site","delegate"]);
+        const allowed=new Set(["navigate","worker_health","research_web","open_url","inspect_site","open_app","open_file","run_command","delegate"]);
         if(plan&&Array.isArray(plan.actions)&&plan.actions.length<=8&&plan.actions.every(a=>allowed.has(a?.type))){
-          for(const action of plan.actions) if(action.type==="open_url"||action.type==="inspect_site"){const url=new URL(String(action.url||""));if(!["http:","https:"].includes(url.protocol))throw new Error("URL inválida.");action.requiresApproval=true;}
+          for(const action of plan.actions) if(action.type==="open_url"||action.type==="inspect_site"||action.type==="open_app"||action.type==="open_file"||action.type==="run_command"){const url=new URL(String(action.url||""));if(!["http:","https:"].includes(url.protocol))throw new Error("URL inválida.");action.requiresApproval=true;}
           plan.id=typeof plan.id==="string"?plan.id:randomUUID(); plan.confidence=Math.max(0,Math.min(1,Number(plan.confidence)||0));
-          plan.requiresApproval=Boolean(plan.requiresApproval)||plan.actions.some(a=>a.type==="open_url"||a.type==="inspect_site");
+          plan.requiresApproval=Boolean(plan.requiresApproval)||plan.actions.some(a=>["open_url","inspect_site","open_app","open_file","run_command"].includes(a.type));
           return res.json({plan});
         }
       } catch {}
@@ -101,11 +101,11 @@ app.post("/plan",async(req,res)=>{
     const raw=await generateGeminiText("Você é o Action Planner do JARVIS. Retorne JSON com plan e ações permitidas: navigate, worker_health, research_web, open_url, inspect_site, delegate.",input,700);
     if(raw){
       const parsed=JSON.parse(raw.replace(/^\`\`\`json\s*|\s*\`\`\`$/g,"")); const plan=parsed?.plan;
-      const allowed=new Set(["navigate","worker_health","research_web","open_url","inspect_site","delegate"]);
+      const allowed=new Set(["navigate","worker_health","research_web","open_url","inspect_site","open_app","open_file","run_command","delegate"]);
       if(plan&&Array.isArray(plan.actions)&&plan.actions.length<=8&&plan.actions.every(a=>allowed.has(a?.type))){
-        for(const action of plan.actions) if(action.type==="open_url"||action.type==="inspect_site"){const url=new URL(String(action.url||""));if(!["http:","https:"].includes(url.protocol))throw new Error("URL inválida.");action.requiresApproval=true;}
+        for(const action of plan.actions) if(action.type==="open_url"||action.type==="inspect_site"||action.type==="open_app"||action.type==="open_file"||action.type==="run_command"){const url=new URL(String(action.url||""));if(!["http:","https:"].includes(url.protocol))throw new Error("URL inválida.");action.requiresApproval=true;}
         plan.id=typeof plan.id==="string"?plan.id:randomUUID(); plan.confidence=Math.max(0,Math.min(1,Number(plan.confidence)||0));
-        plan.requiresApproval=Boolean(plan.requiresApproval)||plan.actions.some(a=>a.type==="open_url"||a.type==="inspect_site");
+        plan.requiresApproval=Boolean(plan.requiresApproval)||plan.actions.some(a=>["open_url","inspect_site","open_app","open_file","run_command"].includes(a.type));
         return res.json({plan});
       }
     }
@@ -383,6 +383,78 @@ app.post("/tasks", async (req, res) => {
 });
 
 
+
+
+const safeCommands = {
+  system_info: process.platform === "win32" ? ["cmd.exe", ["/c", "ver"]] : ["sh", ["-lc", "uname -a"]],
+  git_status: ["git", ["status", "--short", "--branch"]],
+  node_version: ["node", ["--version"]],
+  npm_version: ["npm", ["--version"]],
+  pwd: process.platform === "win32" ? ["cmd.exe", ["/c", "cd"]] : ["pwd", []],
+  list_files: process.platform === "win32" ? ["cmd.exe", ["/c", "dir"]] : ["sh", ["-lc", "ls -la"]],
+};
+
+app.post("/command/approve", (req, res) => {
+  const task = req.body || {};
+  if (!task.id || !Object.prototype.hasOwnProperty.call(safeCommands, task.command)) {
+    return res.status(400).json({ error: "Comando local não permitido." });
+  }
+  const token = randomUUID();
+  approvalTokens.set(token, { id: task.id, type: "safe-command", command: task.command, createdAt: Date.now() });
+  setTimeout(() => approvalTokens.delete(token), 5 * 60 * 1000);
+  res.json({ ok: true, approvalToken: token });
+});
+
+app.post("/command/execute", async (req, res) => {
+  const task = req.body || {};
+  const saved = approvalTokens.get(task.approvalToken);
+  if (!saved || saved.id !== task.id || saved.type !== "safe-command" || saved.command !== task.command) {
+    return res.status(403).json({ error: "Token do comando inválido ou expirado." });
+  }
+  approvalTokens.delete(task.approvalToken);
+  const [command, args] = safeCommands[task.command];
+  try {
+    const startedAt = new Date().toISOString();
+    const child = spawn(command, args, { windowsHide: true });
+    let stdout = "";
+    let stderr = "";
+    child.stdout?.on("data", d => { stdout += d.toString(); });
+    child.stderr?.on("data", d => { stderr += d.toString(); });
+    const code = await new Promise(resolve => child.on("close", resolve));
+    if (code !== 0) return res.status(500).json({ ok:false, command:task.command, code, stdout:stdout.slice(0,10000), stderr:stderr.slice(0,5000) });
+    res.json({ ok:true, command:task.command, code, stdout:stdout.slice(0,10000), stderr:stderr.slice(0,5000), startedAt, finishedAt:new Date().toISOString() });
+  } catch (error) {
+    res.status(500).json({ ok:false, error:error instanceof Error ? error.message : "Falha no comando local." });
+  }
+});
+
+app.post("/computer/file-approve", (req, res) => {
+  const task = req.body || {};
+  const filePath = typeof task.path === "string" ? task.path.trim() : "";
+  if (!task.id || !filePath || filePath.length > 2000) return res.status(400).json({ error: "Caminho de arquivo inválido." });
+  const token = randomUUID();
+  approvalTokens.set(token, { id: task.id, type: "open-file", path: filePath, createdAt: Date.now() });
+  setTimeout(() => approvalTokens.delete(token), 5 * 60 * 1000);
+  res.json({ ok:true, approvalToken:token });
+});
+
+app.post("/computer/file-open", (req, res) => {
+  const task = req.body || {};
+  const filePath = typeof task.path === "string" ? task.path.trim() : "";
+  const saved = approvalTokens.get(task.approvalToken);
+  if (!saved || saved.id !== task.id || saved.type !== "open-file" || saved.path !== filePath) {
+    return res.status(403).json({ error:"Token do arquivo inválido ou expirado." });
+  }
+  approvalTokens.delete(task.approvalToken);
+  try {
+    const command = process.platform === "win32" ? "cmd.exe" : process.platform === "darwin" ? "open" : "xdg-open";
+    const args = process.platform === "win32" ? ["/c", "start", "", filePath] : [filePath];
+    spawn(command, args, { detached:true, stdio:"ignore", windowsHide:true }).unref();
+    res.json({ ok:true, path:filePath, platform:process.platform });
+  } catch (error) {
+    res.status(500).json({ ok:false, error:error instanceof Error ? error.message : "Falha ao abrir arquivo." });
+  }
+});
 
 app.post("/computer/approve", (req, res) => {
   const task = req.body || {};
