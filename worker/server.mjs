@@ -334,7 +334,77 @@ app.post("/opportunities/deep", async (req, res) => {
   finally { busy=false; }
 });
 
-app.get("/ai/status", async (_req, res) => {\n  const status = await localAIStatus();\n  res.json({ ...status, provider: "ollama", model: OLLAMA_MODEL, url: OLLAMA_URL });\n});\n\napp.post("/ai/chat", async (req, res) => {\n  const input = typeof req.body?.input === "string" ? req.body.input.trim() : "";\n  if (!input) return res.status(400).json({ error: "input obrigatório" });\n  try {\n    const system = "Você é JARVIS, um assistente pessoal local, natural, objetivo e educado, falando português do Brasil. Não invente que executou ações. Se uma ação externa for necessária, explique que ela será planejada e protegida por aprovação. Responda de forma conversacional.";\n    const answer = await generateLocalText(system, input, 700);\n    res.json({ ok: true, answer, provider: "ollama", model: OLLAMA_MODEL });\n  } catch (error) {\n    res.status(503).json({ ok: false, error: error instanceof Error ? error.message : "IA local indisponível." });\n  }\n});\n\napp.get("/health", (_req, res) => {
+app.get("/ai/status", async (_req, res) => {\n  const status = await localAIStatus();\n  res.json({ ...status, provider: "ollama", model: OLLAMA_MODEL, url: OLLAMA_URL });\n});\n\napp.post("/ai/chat", async (req, res) => {\n  const input = typeof req.body?.input === "string" ? req.body.input.trim() : "";\n  if (!input) return res.status(400).json({ error: "input obrigatório" });\n  try {\n    const system = "Você é JARVIS, um assistente pessoal local, natural, objetivo e educado, falando português do Brasil. Não invente que executou ações. Se uma ação externa for necessária, explique que ela será planejada e protegida por aprovação. Responda de forma conversacional.";\n    const answer = await generateLocalText(system, input, 700);\n    res.json({ ok: true, answer, provider: "ollama", model: OLLAMA_MODEL });\n  } catch (error) {\n    res.status(503).json({ ok: false, error: error instanceof Error ? error.message : "IA local indisponível." });\n  }\n});\n\n
+// JARVIS local capabilities: screen, files, notifications and persistent schedules.
+const scheduleFile = "artifacts/jarvis-schedules.json";
+let schedules = [];
+async function loadSchedules(){ try{ schedules=JSON.parse(await readFile(scheduleFile,"utf8")); if(!Array.isArray(schedules)) schedules=[]; }catch{ schedules=[]; } }
+async function saveSchedules(){ await mkdir("artifacts",{recursive:true}); await writeFile(scheduleFile,JSON.stringify(schedules,null,2),"utf8"); }
+await loadSchedules();
+function scheduleLoop(){
+  const now=Date.now();
+  for(const item of schedules.filter(x=>x.enabled && !x.ran && new Date(x.runAt).getTime()<=now)){
+    item.ran=true; item.executedAt=new Date().toISOString();
+    if(item.command && Object.prototype.hasOwnProperty.call(safeCommands,item.command)){
+      const [cmd,args]=safeCommands[item.command];
+      const child=spawn(cmd,args,{windowsHide:true,stdio:"ignore"}); child.unref();
+    }
+  }
+  saveSchedules().catch(()=>{});
+}
+setInterval(scheduleLoop,1000);
+
+app.post("/screen/approve",(req,res)=>{
+  const id=typeof req.body?.id==="string"?req.body.id:"";
+  if(!id)return res.status(400).json({error:"id obrigatório"});
+  const token=randomUUID(); approvalTokens.set(token,{id,type:"screen-capture",createdAt:Date.now()});
+  setTimeout(()=>approvalTokens.delete(token),5*60*1000);
+  res.json({ok:true,approvalToken:token});
+});
+app.post("/screen/capture",async(req,res)=>{
+  const {id,approvalToken}=req.body||{}; const saved=approvalTokens.get(approvalToken);
+  if(!saved||saved.id!==id||saved.type!=="screen-capture")return res.status(403).json({error:"Aprovação de tela inválida ou expirada."});
+  approvalTokens.delete(approvalToken);
+  try{
+    if(process.platform!=="win32")return res.status(501).json({error:"Captura de tela local disponível nesta versão para Windows."});
+    const file="artifacts/screen-"+id+".png"; await mkdir("artifacts",{recursive:true});
+    const script='Add-Type -AssemblyName System.Windows.Forms; Add-Type -AssemblyName System.Drawing; $b=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $bmp=New-Object System.Drawing.Bitmap($b.Width,$b.Height); $g=[System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location,[System.Drawing.Point]::Empty,$b.Size); $bmp.Save("'+file.replace(/"/g,'')+'",[System.Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $bmp.Dispose()';
+    await new Promise((resolve,reject)=>{const child=spawn("powershell.exe",["-NoProfile","-NonInteractive","-Command",script],{windowsHide:true});let err="";child.stderr.on("data",d=>err+=d);child.on("close",code=>code===0?resolve():reject(new Error(err||"Falha na captura.")))});
+    res.json({ok:true,file});
+  }catch(error){res.status(500).json({ok:false,error:error instanceof Error?error.message:"Falha na captura de tela."})}
+});
+
+const fileTasks=new Set(["list","read","create","write","mkdir","move"]);
+app.post("/files/approve",(req,res)=>{
+  const task=req.body||{}; if(!task.id||!fileTasks.has(task.type))return res.status(400).json({error:"Tarefa de arquivo não permitida."});
+  if(typeof task.path!=="string"||task.path.length>2000)return res.status(400).json({error:"Caminho inválido."});
+  const token=randomUUID(); approvalTokens.set(token,{id:task.id,type:"file-task",taskType:task.type,path:task.path,content:typeof task.content==="string"?task.content:""});
+  setTimeout(()=>approvalTokens.delete(token),5*60*1000); res.json({ok:true,approvalToken:token});
+});
+app.post("/files/execute",async(req,res)=>{
+  const task=req.body||{}; const saved=approvalTokens.get(task.approvalToken);
+  if(!saved||saved.id!==task.id||saved.type!=="file-task"||saved.taskType!==task.type||saved.path!==task.path)return res.status(403).json({error:"Aprovação de arquivo inválida ou expirada."});
+  approvalTokens.delete(task.approvalToken);
+  try{
+    const p=task.path;
+    if(task.type==="list"){const entries=await (await import("node:fs/promises")).readdir(p||".",{withFileTypes:true});return res.json({ok:true,entries:entries.slice(0,200).map(x=>({name:x.name,type:x.isDirectory()?"directory":"file"}))});}
+    if(task.type==="read"){const data=await readFile(p,"utf8");return res.json({ok:true,path:p,content:data.slice(0,50000)});}
+    if(task.type==="mkdir"){await mkdir(p,{recursive:true});return res.json({ok:true,path:p});}
+    if(task.type==="create"||task.type==="write"){await writeFile(p,typeof task.content==="string"?task.content:"","utf8");return res.json({ok:true,path:p,bytes:Buffer.byteLength(typeof task.content==="string"?task.content:"")});}
+    if(task.type==="move"){const {rename}=await import("node:fs/promises");if(typeof task.destination!=="string"||!task.destination)return res.status(400).json({error:"Destino inválido."});await rename(p,task.destination);return res.json({ok:true,path:p,destination:task.destination});}
+    return res.status(400).json({error:"Tarefa desconhecida."});
+  }catch(error){res.status(500).json({ok:false,error:error instanceof Error?error.message:"Falha no gerenciamento de arquivos."})}
+});
+app.post("/schedule",async(req,res)=>{
+  const task=req.body||{}; if(!task.id||typeof task.runAt!=="string"||Number.isNaN(new Date(task.runAt).getTime()))return res.status(400).json({error:"id e runAt válidos são obrigatórios."});
+  if(!task.command||!Object.prototype.hasOwnProperty.call(safeCommands,task.command))return res.status(400).json({error:"Somente comandos seguros podem ser agendados."});
+  const item={id:task.id,runAt:new Date(task.runAt).toISOString(),command:task.command,enabled:true,ran:false,createdAt:new Date().toISOString()};
+  schedules.push(item); await saveSchedules(); res.json({ok:true,schedule:item});
+});
+app.get("/schedules",(_req,res)=>res.json({ok:true,schedules}));
+app.post("/schedule/cancel",async(req,res)=>{const id=req.body?.id;schedules=schedules.map(x=>x.id===id?{...x,enabled:false}:x);await saveSchedules();res.json({ok:true});});
+
+app.get("/health", (_req, res) => {
   res.json({ status: busy ? "busy" : "connected", version: "0.1.0" });
 });
 
