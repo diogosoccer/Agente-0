@@ -40,34 +40,36 @@ export async function executeApprovedLocalTask(
   task: LocalTask,
 ): Promise<ExecutionResult> {
   const executionId = crypto.randomUUID();
-  const needsApproval = !["worker_health", "file_search", "file_read"].includes(task.type);
-  if (needsApproval) assertApproved(approvalId);
+  const automatic = ["worker_health", "file_search", "file_read", "open_app"].includes(task.type);
+
+  if (!automatic) assertApproved(approvalId);
   await auditExecution(executionId, task.type, "started", task.label, "user");
 
   try {
     const root = base();
+
     if (task.type === "worker_health") {
       const result = await checkExecutor(root);
       await auditExecution(executionId, task.type, "success", JSON.stringify(result), "worker");
       return { executionId, status: "success", result };
     }
 
-    if (task.type === "open_app") {
-      const result = await runComputerAction(root, "open_app", task.value);
+    if (task.type === "open_file") {
+      const result = await openLocalFile(root, task.value);
       await auditExecution(executionId, task.type, "success", JSON.stringify(result), "worker");
       return { executionId, status: "success", result };
     }
 
-    if (task.type === "open_file") {
-      const data = await openLocalFile(root, task.value);
-      await auditExecution(executionId, task.type, "success", JSON.stringify(data), "worker");
-      return { executionId, status: "success", result: data };
+    if (task.type === "run_command") {
+      const result = await runSafeLocalCommand(root, task.command);
+      await auditExecution(executionId, task.type, "success", JSON.stringify(result), "worker");
+      return { executionId, status: "success", result };
     }
 
-    if (task.type === "run_command" || task.type === "shell_command" || task.type === "worker_health") {
-      const data = task.type === "worker_health" ? await checkExecutor(root) : task.type === "run_command" ? await runSafeLocalCommand(root, task.command) : await approveAndExecuteLocalAction({ action: "run_command", command: task.command }, approvalId, executionId);
-      await auditExecution(executionId, task.type, "success", JSON.stringify(data), "worker");
-      return { executionId, status: "success", result: data };
+    if (task.type === "open_app") {
+      const result = await executeLocalAction({ action: "open_app", app: task.value }, undefined, executionId);
+      await auditExecution(executionId, task.type, "success", JSON.stringify(result), "worker");
+      return { executionId, status: "success", result };
     }
 
     const localAction: LocalAction =
@@ -77,15 +79,14 @@ export async function executeApprovedLocalTask(
       task.type === "file_create" ? { action: "file_create", path: task.path, content: task.content || "" } :
       task.type === "file_move" ? { action: "file_move", source: task.source, destination: task.destination } :
       task.type === "file_rename" ? { action: "file_rename", source: task.source, name: task.name } :
+      task.type === "shell_command" ? { action: "run_command", command: task.command } :
       (() => { throw new Error("Tipo de tarefa local não suportado."); })();
 
-    const data = needsApproval
-      ? await approveAndExecuteLocalAction(localAction, crypto.randomUUID(), crypto.randomUUID())
-      : await executeLocalAction(localAction, undefined, crypto.randomUUID());
-    if (data?.waitingApproval) throw new Error("Executor local aguardando aprovação adicional.");
+    const result = await approveAndExecuteLocalAction(localAction, approvalId, executionId);
+    if (result?.waitingApproval) throw new Error("Executor local aguardando aprovação adicional.");
 
-    await auditExecution(executionId, task.type, "success", JSON.stringify(data), "worker");
-    return { executionId, status: "success", result: data };
+    await auditExecution(executionId, task.type, "success", JSON.stringify(result), "worker");
+    return { executionId, status: "success", result };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha na execução local.";
     await auditExecution(executionId, task.type, "failed", message, "worker");
