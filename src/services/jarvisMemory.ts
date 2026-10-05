@@ -16,3 +16,9 @@ export function recallMemories(query:string,limit=8){const q=normalize(query);if
 export async function recallMemoriesDeep(query:string,limit=8){const local=recallMemories(query,limit);try{const rows=await listJarvisRecords("memory",300);const remote=rows.map(r=>r.data as unknown as JarvisImportantMemory).filter(x=>x?.id&&x?.content);const merged=[...remote,...local.filter(x=>!remote.some(r=>r.id===x.id))];const q=normalize(query);const tokens=q.split(/\s+/).filter(x=>x.length>=4).slice(0,24);return merged.map(memory=>({memory,score:tokens.filter(t=>normalize(memory.content).includes(t)).length+memory.importance*.5})).sort((a,b)=>b.score-a.score).slice(0,limit).map(x=>x.memory)}catch{return local}}
 export function forgetMemory(id:string){write(read().filter(x=>x.id!==id));void deleteJarvisRecord("memory",id);window.dispatchEvent(new Event("jarvis-memory-updated"))}
 export async function hydrateImportantMemories(){const rows=await listJarvisRecords("memory",300);if(!rows.length)return;const remote=rows.map(r=>r.data as unknown as JarvisImportantMemory).filter(x=>x?.id&&x?.content);const merged=[...remote,...read().filter(local=>!remote.some(x=>x.id===local.id))].slice(0,300);write(merged);window.dispatchEvent(new Event("jarvis-memory-updated"))}
+export function rememberMissionOutcome(goal:string,result:string){
+  const cleanGoal=goal.trim().replace(/\\s+/g," ");
+  const cleanResult=result.trim().replace(/\\s+/g," ").slice(0,1200);
+  if(!cleanGoal||!cleanResult)return null;
+  return rememberIfImportant("Aprendizado de missão: objetivo = "+cleanGoal+"; resultado = "+cleanResult,"system");
+}
