@@ -131,7 +131,7 @@ async function verifyStep(step: MissionStep, result: unknown) {
 
 function dependenciesSatisfied(step: MissionStep, steps: MissionStep[]) { return step.dependsOn.every(dep => { const byIndex = steps.find(s => String(s.index) === dep); return Boolean(byIndex && byIndex.status === "success"); }); }
 
-async function runStep(step: MissionStep, deps: MissionRunnerDeps, specialistResult?: { result?: unknown }) {
+async function runStep(step: MissionStep, deps: MissionRunnerDeps) {
   const action = step.action;
   if (action.type === "navigate") {
     deps.navigate?.(action.path);
@@ -145,7 +145,6 @@ async function runStep(step: MissionStep, deps: MissionRunnerDeps, specialistRes
     return result;
   }
   if (action.type === "research_web") {
-    if (specialistResult?.result !== undefined) return specialistResult.result;
     if (!deps.research) throw new Error("Callback de pesquisa não configurado.");
     return deps.research(action.query);
   }
