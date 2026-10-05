@@ -383,6 +383,78 @@ app.post("/tasks", async (req, res) => {
 });
 
 
+
+app.post("/computer/approve", (req, res) => {
+  const task = req.body || {};
+  const allowed = new Set(["open_app","type","key","hotkey"]);
+  if (!task.id || !allowed.has(task.action)) return res.status(400).json({ error: "id e ação de computador válidos são obrigatórios." });
+  const value = typeof task.value === "string" ? task.value : "";
+  if (value.length > 2000) return res.status(400).json({ error: "Comando muito longo." });
+  const token = randomUUID();
+  approvalTokens.set(token, { id: task.id, type: "computer", action: task.action, value, createdAt: Date.now() });
+  setTimeout(() => approvalTokens.delete(token), 5 * 60 * 1000);
+  res.json({ ok: true, approvalToken: token });
+});
+
+app.post("/computer/action", async (req, res) => {
+  const task = req.body || {};
+  const saved = approvalTokens.get(task.approvalToken);
+  if (!saved || saved.id !== task.id || saved.type !== "computer" || saved.action !== task.action || saved.value !== (typeof task.value === "string" ? task.value : "")) {
+    return res.status(403).json({ error: "Token de controle do computador inválido ou expirado." });
+  }
+  approvalTokens.delete(task.approvalToken);
+  const action = task.action;
+  const value = typeof task.value === "string" ? task.value : "";
+  try {
+    if (process.platform !== "win32") {
+      if (action === "open_app") {
+        const aliases = { chrome:"google-chrome", navegador:"google-chrome", edge:"microsoft-edge", calculadora:"gnome-calculator", arquivos:"xdg-open ." };
+        const target = aliases[value.toLowerCase()] || value;
+        const [cmd, args] = target === "xdg-open ." ? ["xdg-open", ["."]] : [target, []];
+        const child = spawn(cmd, args, { detached:true, stdio:"ignore" }); child.unref();
+        return res.json({ ok:true, action, value, platform:process.platform });
+      }
+      return res.status(501).json({ ok:false, error:"Controle de teclado está implementado para Windows nesta versão." });
+    }
+    const ps = (script) => new Promise((resolve, reject) => {
+      const child = spawn("powershell.exe", ["-NoProfile","-NonInteractive","-Command",script], { windowsHide:true });
+      let stderr="";
+      child.stderr.on("data", d => stderr += d);
+      child.on("close", code => code === 0 ? resolve() : reject(new Error(stderr || "PowerShell falhou.")));
+    });
+    if (action === "open_app") {
+      const aliases = {
+        chrome:"chrome.exe", navegador:"chrome.exe", edge:"msedge.exe", firefox:"firefox.exe",
+        calculadora:"calc.exe", bloco:"notepad.exe", bloco_de_notas:"notepad.exe",
+        explorador:"explorer.exe", arquivos:"explorer.exe", terminal:"wt.exe"
+      };
+      const target = aliases[value.toLowerCase()] || value;
+      if (!/^[a-zA-Z0-9._-]+(?:\.exe)?$/.test(target)) return res.status(400).json({ error:"Aplicativo não permitido." });
+      spawn(target, [], { detached:true, stdio:"ignore", windowsHide:true }).unref();
+    } else if (action === "type") {
+      const escaped = value.replace(/[{}+^%~()[\]]/g, ch => "{" + ch + "}");
+      await ps(\`$ws=New-Object -ComObject WScript.Shell; $ws.SendKeys('\${escaped.replace(/'/g,"''")}')\`);
+    } else {
+      const normalized = value.toLowerCase().replace(/\s+/g,"");
+      const keyMap = { enter:"ENTER", return:"ENTER", tab:"TAB", esc:"ESC", escape:"ESC", space:"SPACE", backspace:"BACKSPACE", delete:"DELETE", left:"LEFT", right:"RIGHT", up:"UP", down:"DOWN", home:"HOME", end:"END", f1:"F1", f2:"F2", f3:"F3", f4:"F4", f5:"F5", f6:"F6", f7:"F7", f8:"F8", f9:"F9", f10:"F10", f11:"F11", f12:"F12" };
+      if (action === "key") {
+        const key = keyMap[normalized] || (normalized.length === 1 ? normalized : null);
+        if (!key) return res.status(400).json({ error:"Tecla não permitida." });
+        await ps(\`$ws=New-Object -ComObject WScript.Shell; $ws.SendKeys('\${"{" + key + "}"}')\`);
+      } else if (action === "hotkey") {
+        const parts = normalized.split("+").filter(Boolean);
+        const mods = { ctrl:"^", control:"^", alt:"%", shift:"+", win:"#", windows:"#", cmd:"#" };
+        const keys = parts.map(x => mods[x] || (keyMap[x] ? "{" + keyMap[x] + "}" : x.length === 1 ? x : null));
+        if (keys.some(x => !x)) return res.status(400).json({ error:"Atalho não permitido." });
+        await ps(\`$ws=New-Object -ComObject WScript.Shell; $ws.SendKeys('\${keys.join("").replace(/'/g,"''")}')\`);
+      }
+    }
+    res.json({ ok:true, action, value, platform:process.platform });
+  } catch (error) {
+    res.status(500).json({ ok:false, error:error instanceof Error ? error.message : "Falha no controle do computador." });
+  }
+});
+
 app.post("/open", (req, res) => {
   const task = req.body;
   if (!task?.approvalToken || !consumeApproval(task.approvalToken, { id: task.id, type: "open_url", url: task.url })) {
