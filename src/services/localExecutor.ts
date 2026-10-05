@@ -47,6 +47,11 @@ export async function executeLocalAction(action: LocalAction, approvalToken?: st
   return post("/action", { id, ...action, approvalToken });
 }
 
-export async function approveAndExecuteLocalAction(action: LocalAction, approvalToken: string, id: string) {
-  return executeLocalAction(action, approvalToken, id);
+export async function approveAndExecuteLocalAction(action: LocalAction, _approvalToken: string, id: string) {
+  const permission = (await getPermission(action.action)).permission;
+  if (permission === "blocked") throw new Error("Ação bloqueada pela política de segurança.");
+  if (permission === "automatic") return post("/action", { id, ...action });
+  const approval = await post("/approve", { id, ...action });
+  if (typeof approval.approvalToken !== "string") throw new Error("Executor local não gerou token de execução.");
+  return post("/action", { id, ...action, approvalToken: approval.approvalToken });
 }
