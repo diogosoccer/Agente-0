@@ -68,7 +68,7 @@ const riskOf = (a: JarvisPlanAction): MissionRisk => {
 const agentForAction = (action: JarvisPlanAction): AgentId => {
   if (action.type === "research_web" || action.type === "inspect_site") return "researcher";
   if (action.type === "navigate" || action.type === "open_url" || action.type === "browser_action") return "operator";
-  if (action.type === "open_app" || action.type === "close_app" || action.type === "open_file" || action.type === "file_search" || action.type === "file_read" || action.type === "file_create" || action.type === "file_move" || action.type === "file_rename" || action.type === "run_command") return "operator";
+  if (action.type === "open_app" || action.type === "close_app" || action.type === "open_file" || action.type === "file_search" || action.type === "file_read" || action.type === "file_create" || action.type === "file_move" || action.type === "file_rename" || action.type === "run_command" || action.type === "shell_command") return "operator";
   if (action.type === "delegate") return "planner";
   if (action.type === "worker_health") return "sentinel";
   return "analyst";
@@ -198,6 +198,16 @@ async function runStep(step: MissionStep, deps: MissionRunnerDeps, steps: Missio
               ? { type: "file_move", source: action.source, destination: action.destination, label: action.label }
               : { type: "file_rename", source: action.source, name: action.name, label: action.label }
         );
+    step.approvalId = approval.id;
+    step.approvalType = "local_task";
+    step.status = "waiting_approval";
+    await saveStep(step);
+    return { waitingApproval: true, approvalId: approval.id };
+  }
+  if (action.type === "shell_command") {
+    const approval = deps.requestApproval
+      ? await deps.requestApproval(step)
+      : await requestLocalTaskApproval({ type: "shell_command", command: action.command, label: action.label });
     step.approvalId = approval.id;
     step.approvalType = "local_task";
     step.status = "waiting_approval";
@@ -405,7 +415,9 @@ export async function approveAndResumeMission(
               ? ({type:"file_rename",source:step.action.source,name:step.action.name,label:step.action.label} as LocalTask)
               : step.action.type === "run_command"
                 ? ({type:"run_command",command:step.action.command,label:step.action.label} as LocalTask)
-                : null;
+                : step.action.type === "shell_command"
+                  ? ({type:"shell_command",command:step.action.command,label:step.action.label} as LocalTask)
+                  : null;
   if (!local) throw new Error("Aprovação não corresponde a uma tarefa local.");
   const result = deps.executeApprovedLocal
     ? await deps.executeApprovedLocal(step, approvalId)
