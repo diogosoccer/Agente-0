@@ -28,8 +28,8 @@ jobs:
       - name: Install root dependencies
         run: npm install
 
-      - name: Build web app
-        run: npm run build
+      - name: Verify web app and contracts
+        run: npm run verify
 
       - name: Install desktop dependencies
         run: npm --prefix desktop install
