@@ -4,7 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import process from "node:process";
 import { randomUUID } from "node:crypto";
-import { generateLocalText, localAIStatus, OLLAMA_MODEL, OLLAMA_URL } from "./local-ai.mjs";
+import { generateLocalText, generateLocalVision, localAIStatus, OLLAMA_MODEL, OLLAMA_URL } from "./local-ai.mjs";
 
 const app = express();
 const port = Number(process.env.PORT || 8787);
@@ -353,6 +353,28 @@ function scheduleLoop(){
   saveSchedules().catch(()=>{});
 }
 setInterval(scheduleLoop,1000);
+
+app.post("/vision/analyze", async (req, res) => {
+  const image = typeof req.body?.imageBase64 === "string" ? req.body.imageBase64.trim() : "";
+  const question = typeof req.body?.question === "string" ? req.body.question.trim() : "Descreva o que é relevante na imagem.";
+  if (!image) return res.status(400).json({ error: "imageBase64 obrigatório." });
+  if (image.length > 8_000_000) return res.status(413).json({ error: "Imagem muito grande." });
+  try {
+    busy = true;
+    const cleanImage = image.replace(/^data:image\\/[^;]+;base64,/, "");
+    const analysis = await generateLocalVision(
+      "Você é a visão do JARVIS. Analise a imagem com precisão, sem inventar detalhes. Responda em português. Identifique apenas elementos visíveis e úteis para a tarefa.",
+      question,
+      cleanImage,
+      700
+    );
+    res.json({ ok: true, analysis, model: (await localAIStatus()).model });
+  } catch (error) {
+    res.status(503).json({ ok: false, error: error instanceof Error ? error.message : "IA visual indisponível." });
+  } finally {
+    busy = false;
+  }
+});
 
 app.post("/screen/approve",(req,res)=>{
   const id=typeof req.body?.id==="string"?req.body.id:"";
