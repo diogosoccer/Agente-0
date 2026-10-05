@@ -112,6 +112,59 @@ async function handle(req, res) {
     return json(res, 200, { ok: true, action, permission });
   }
 
+  if (req.method === "POST" && url.pathname === "/verify") {
+    const action = String(data.action || "");
+    try {
+      if (action === "open_app") {
+        const app = String(data.app || "").replace(/\.exe$/i, "") + ".exe";
+        const result = await run("tasklist", ["/FI", "IMAGENAME eq " + app]);
+        const verified = result.code === 0 && result.stdout.toLowerCase().includes(app.toLowerCase());
+        return json(res, 200, { ok: true, status: verified ? "VERIFIED" : "UNCERTAIN", verified, evidence: result.stdout.trim() });
+      }
+      if (action === "close_app") {
+        const app = String(data.app || "").replace(/\.exe$/i, "") + ".exe";
+        const result = await run("tasklist", ["/FI", "IMAGENAME eq " + app]);
+        const verified = result.code === 0 && !result.stdout.toLowerCase().includes(app.toLowerCase());
+        return json(res, 200, { ok: true, status: verified ? "VERIFIED" : "UNCERTAIN", verified, evidence: result.stdout.trim() });
+      }
+      if (action === "file_create") {
+        const filePath = expandPath(data.path);
+        const stat = await fs.stat(filePath);
+        const content = await fs.readFile(filePath, "utf8");
+        const expected = data.content === undefined ? null : String(data.content);
+        const verified = stat.isFile() && (expected === null || content === expected);
+        return json(res, 200, { ok: true, status: verified ? "VERIFIED" : "FAILED", verified, evidence: { path: filePath, bytes: stat.size } });
+      }
+      if (action === "file_move") {
+        const source = expandPath(data.source), destination = expandPath(data.destination);
+        const sourceExists = await fs.access(source).then(() => true).catch(() => false);
+        const destinationExists = await fs.access(destination).then(() => true).catch(() => false);
+        const verified = !sourceExists && destinationExists;
+        return json(res, 200, { ok: true, status: verified ? "VERIFIED" : "FAILED", verified, evidence: { sourceExists, destinationExists, source, destination } });
+      }
+      if (action === "file_rename") {
+        const source = expandPath(data.source), name = String(data.name || "");
+        const destination = path.join(path.dirname(source), name);
+        const sourceExists = await fs.access(source).then(() => true).catch(() => false);
+        const destinationExists = await fs.access(destination).then(() => true).catch(() => false);
+        const verified = !sourceExists && destinationExists;
+        return json(res, 200, { ok: true, status: verified ? "VERIFIED" : "FAILED", verified, evidence: { sourceExists, destinationExists, source, destination } });
+      }
+      if (action === "file_search") {
+        const results = await searchFiles(expandPath(data.root || process.env.USERPROFILE || process.cwd()), data.query || "", Math.min(Number(data.limit) || 50, 100));
+        return json(res, 200, { ok: true, status: "VERIFIED", verified: true, evidence: { count: results.length, results } });
+      }
+      if (action === "file_read") {
+        const filePath = expandPath(data.path);
+        const stat = await fs.stat(filePath);
+        return json(res, 200, { ok: true, status: stat.isFile() ? "VERIFIED" : "FAILED", verified: stat.isFile(), evidence: { path: filePath, bytes: stat.size } });
+      }
+      return json(res, 200, { ok: true, status: "UNCERTAIN", verified: false, evidence: ["Não existe verificador específico para esta ação."] });
+    } catch (error) {
+      return json(res, 200, { ok: false, status: "FAILED", verified: false, error: error instanceof Error ? error.message : "Falha na verificação." });
+    }
+  }
+
   if (req.method === "POST" && url.pathname === "/approve") {
     const action = String(data.action || "");
     const permission = permissionFor(action);
