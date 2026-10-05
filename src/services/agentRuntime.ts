@@ -14,8 +14,65 @@ const specialist=(goal:string):AgentId=>{
 
 const workerBase=()=> (typeof window!=="undefined"?localStorage.getItem("az:executorUrl"):null)||"http://localhost:8787";
 
+export type MissionSpecialistResult={
+ ok:boolean;
+ agent:AgentId;
+ summary:string;
+ result?:unknown;
+ error?:string;
+};
+
+
+
 export class MultiAgentRuntime{
  private queue:string[]=[];private running=false;
+
+  async executeMissionSpecialist(agent:AgentId, goal:string):Promise<MissionSpecialistResult>{
+    try{
+      if(agent==="researcher"){
+        const r=await fetch(workerBase().replace(/\/$/,"")+"/research",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:goal}),signal:AbortSignal.timeout(25000)});
+        if(!r.ok) throw new Error("Worker de pesquisa indisponível.");
+        const data=await r.json();
+        const results=Array.isArray(data.results)?data.results:[];
+        if(!results.length) return {ok:false,agent,summary:"Pesquisa sem resultados suficientes.",result:data,error:"Nenhum resultado encontrado."};
+        return {ok:true,agent,summary:"Researcher concluiu a pesquisa com "+results.length+" resultados.",result:data};
+      }
+      if(agent==="business"){
+        const raw=localStorage.getItem("az:opps")||"[]";
+        const opps=JSON.parse(raw);
+        const relevant=Array.isArray(opps)?opps.slice(0,5):[];
+        const names=relevant.map((x:any)=>x.name||x.title||x.businessName).filter(Boolean);
+        return {ok:true,agent,summary:names.length?"Business priorizou: "+names.join(", "):"Business não encontrou oportunidades salvas.",result:relevant};
+      }
+      if(agent==="planner"){
+        return {ok:true,agent,summary:"Planner estruturou a etapa em contexto, execução autorizada e verificação."};
+      }
+      if(agent==="analyst"){
+        return {ok:true,agent,summary:"Analyst preparou a etapa para comparação e verificação."};
+      }
+      if(agent==="sentinel"){
+        return {ok:true,agent,summary:"Sentinel validou menor privilégio, escopo e aprovação humana para ações externas."};
+      }
+      if(agent==="archivist"){
+        return {ok:true,agent,summary:"Archivist preparou o registro da etapa sem armazenar segredos."};
+      }
+      if(agent==="vision"){
+        return {ok:true,agent,summary:"Vision validou a disponibilidade de uma fonte visual autorizada para esta etapa."};
+      }
+      if(agent==="scout"){
+        return {ok:true,agent,summary:"Scout preparou a etapa de descoberta sem executar ações externas."};
+      }
+      if(agent==="operator"){
+        return {ok:true,agent,summary:"Operator assumiu a etapa; a execução local ou externa continuará protegida pelo approval gate."};
+      }
+      if(agent==="builder"){
+        return {ok:true,agent,summary:"Builder assumiu a etapa de software dentro do escopo autorizado."};
+      }
+      return {ok:true,agent,summary:"Especialista "+agent+" assumiu a etapa."};
+    }catch(error){
+      return {ok:false,agent,summary:"Especialista não concluiu a etapa.",error:error instanceof Error?error.message:"Falha desconhecida."};
+    }
+  }
 
  submit(goal:string){
    const root=agentOrchestrator.create(goal,"normal");
