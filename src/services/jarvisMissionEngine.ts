@@ -1,4 +1,5 @@
 import type { JarvisActionPlan, JarvisPlanAction } from "./jarvisActionPlan";
+import type { AgentId } from "./agentOrchestrator";
 import { auditExecution } from "./jarvisAudit";
 import { executeApprovedLocalTask, requestLocalTaskApproval, type LocalTask } from "./jarvisExecution";
 import { listJarvisRecords, upsertJarvisRecord } from "./jarvisPersistence";
@@ -18,6 +19,7 @@ export type MissionStep = {
   missionId: string;
   index: number;
   action: JarvisPlanAction;
+  agent: AgentId;
   status: MissionStepStatus;
   risk: MissionRisk;
   attempts: number;
@@ -59,6 +61,15 @@ const riskOf = (a: JarvisPlanAction): MissionRisk => {
   return "high";
 };
 
+const agentForAction = (action: JarvisPlanAction): AgentId => {
+  if (action.type === "research_web" || action.type === "inspect_site") return "researcher";
+  if (action.type === "navigate" || action.type === "open_url" || action.type === "browser_action") return "operator";
+  if (action.type === "open_app" || action.type === "open_file" || action.type === "run_command") return "operator";
+  if (action.type === "delegate") return "planner";
+  if (action.type === "worker_health") return "sentinel";
+  return "analyst";
+};
+
 const saveMission = (mission: JarvisMission) =>
   upsertJarvisRecord("mission", mission.id, mission as unknown as Record<string, unknown>);
 
@@ -93,6 +104,7 @@ export function buildMissionFromPlan(plan: JarvisActionPlan): {
     missionId,
     index,
     action,
+    agent: agentForAction(action),
     status: "pending" as const,
     risk: riskOf(action),
     attempts: 0,
