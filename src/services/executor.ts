@@ -45,3 +45,33 @@ export async function runBrowserTask(baseUrl: string, task: BrowserTask) {
   if (!response.ok) throw new Error("Executor recusou a tarefa.");
   return response.json();
 }
+
+
+export type ComputerAction = "open_app" | "type" | "key" | "hotkey";
+
+export async function runComputerAction(
+  baseUrl: string,
+  action: ComputerAction,
+  value: string,
+): Promise<{ ok: boolean; action: string; value: string; platform?: string }> {
+  const root = baseUrl.replace(/\/$/, "");
+  const id = crypto.randomUUID();
+  const approval = await fetch(root + "/computer/approve", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, action, value }),
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!approval.ok) throw new Error("Worker recusou o controle do computador.");
+  const approved = await approval.json();
+  if (typeof approved.approvalToken !== "string") throw new Error("Worker não forneceu token de controle.");
+  const response = await fetch(root + "/computer/action", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, action, value, approvalToken: approved.approvalToken }),
+    signal: AbortSignal.timeout(10000),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.error || "Falha no controle do computador.");
+  return data;
+}
