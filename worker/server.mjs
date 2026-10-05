@@ -383,6 +383,26 @@ app.post("/screen/approve",(req,res)=>{
   setTimeout(()=>approvalTokens.delete(token),5*60*1000);
   res.json({ok:true,approvalToken:token});
 });
+app.post("/screen/analyze",async(req,res)=>{
+  const id=typeof req.body?.id==="string"?req.body.id:"";
+  const approvalToken=typeof req.body?.approvalToken==="string"?req.body.approvalToken:"";
+  const question=typeof req.body?.question==="string"&&req.body.question.trim()?req.body.question.trim():"O que é relevante nesta tela para a tarefa atual?";
+  const saved=approvalTokens.get(approvalToken);
+  if(!saved||saved.id!==id||saved.type!=="screen-capture")return res.status(403).json({error:"Aprovação de tela inválida ou expirada."});
+  approvalTokens.delete(approvalToken);
+  try{
+    if(process.platform!=="win32")return res.status(501).json({error:"Análise da tela local disponível nesta versão para Windows."});
+    const file="artifacts/screen-"+id+".png"; await mkdir("artifacts",{recursive:true});
+    const script='Add-Type -AssemblyName System.Windows.Forms; Add-Type -AssemblyName System.Drawing; $b=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $bmp=New-Object System.Drawing.Bitmap($b.Width,$b.Height); $g=[System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location,[System.Drawing.Point]::Empty,$b.Size); $bmp.Save("'+file.replace(/"/g,'')+'",[System.Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $bmp.Dispose()';
+    await new Promise((resolve,reject)=>{const child=spawn("powershell.exe",["-NoProfile","-NonInteractive","-Command",script],{windowsHide:true});let err="";child.stderr.on("data",d=>err+=d);child.on("close",code=>code===0?resolve():reject(new Error(err||"Falha na captura.")))});
+    const image=await readFile(file);
+    busy=true;
+    const analysis=await generateLocalVision("Você é o JARVIS Vision. Analise somente o que está visível na tela. Não invente elementos. Destaque texto, janelas, estados e elementos acionáveis relevantes para a pergunta.",question,image.toString("base64"),900);
+    res.json({ok:true,analysis,file,dataUrl:"data:image/png;base64,"+image.toString("base64"),model:(await localAIStatus()).model});
+  }catch(error){res.status(503).json({ok:false,error:error instanceof Error?error.message:"Falha na análise da tela."})}
+  finally{busy=false;}
+});
+
 app.post("/screen/capture",async(req,res)=>{
   const {id,approvalToken}=req.body||{}; const saved=approvalTokens.get(approvalToken);
   if(!saved||saved.id!==id||saved.type!=="screen-capture")return res.status(403).json({error:"Aprovação de tela inválida ou expirada."});
