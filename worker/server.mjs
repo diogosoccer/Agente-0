@@ -85,7 +85,7 @@ app.post("/plan",async(req,res)=>{
   const input=typeof req.body?.input==="string"?req.body.input.trim():"";
   if(!input)return res.status(400).json({error:"input obrigatório"});
   try{
-    const localRaw=await generateBestLocalText("Você é o Action Planner do JARVIS. Retorne JSON com plan e ações permitidas: navigate, worker_health, research_web, open_url, inspect_site, delegate. Seja conservador: ações externas exigem aprovação.",input,700);
+    const localRaw=await generateBestLocalText("Você é o Action Planner do JARVIS. Retorne JSON com plan e ações permitidas: navigate, worker_health, research_web, open_url, inspect_site, open_app, open_file, run_command, delegate. Para ações locais, use somente comandos seguros da política: system_info, git_status, node_version, npm_version, pwd, list_files. Seja conservador: ações externas exigem aprovação.",input,700);
     if(localRaw){
       try {
         const parsed=JSON.parse(localRaw.replace(/^\`\`\`json\s*|\s*\`\`\`$/g,"")); const plan=parsed?.plan;
