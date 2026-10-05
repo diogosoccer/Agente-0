@@ -7,12 +7,14 @@ const http = require("node:http");
 let win = null;
 let tray = null;
 let worker = null;
+let localExecutor = null;
 let quitting = false;
 
 const root = app.isPackaged ? process.resourcesPath : path.join(__dirname, "..");
 const workerPath = path.join(root, "worker", "server.mjs");
 const distPath = path.join(root, "dist", "index.html");
 const workerUrl = "http://127.0.0.1:8787";
+const localExecutorUrl = "http://127.0.0.1:8788";
 
 function healthCheck() {
   return new Promise(resolve => {
@@ -25,14 +27,16 @@ function healthCheck() {
   });
 }
 
-async function waitForWorker(timeoutMs = 15000) {
+async function waitForUrl(url, timeoutMs = 15000) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
-    if (await healthCheck()) return true;
+    if (await new Promise(resolve => { const req = http.get(url + "/health", res => { res.resume(); resolve(res.statusCode === 200); }); req.on("error", () => resolve(false)); req.setTimeout(1200, () => { req.destroy(); resolve(false); }); })) return true;
     await new Promise(r => setTimeout(r, 300));
   }
   return false;
 }
+
+async function waitForWorker(timeoutMs = 15000) { return waitForUrl(workerUrl, timeoutMs); }
 
 function startWorker() {
   if (worker) return;
@@ -45,6 +49,19 @@ function startWorker() {
     stdio: "ignore"
   });
   worker.on("exit", () => { worker = null; });
+}
+
+function startLocalExecutor() {
+  if (localExecutor) return;
+  const env = { ...process.env, LOCAL_EXECUTOR_PORT: "8788" };
+  if (app.isPackaged) env.ELECTRON_RUN_AS_NODE = "1";
+  localExecutor = spawn(process.execPath, [path.join(root, "worker", "local-executor.mjs")], {
+    cwd: root,
+    env,
+    windowsHide: true,
+    stdio: "ignore"
+  });
+  localExecutor.on("exit", () => { localExecutor = null; });
 }
 
 function showJarvis() {
@@ -113,7 +130,10 @@ function createTray() {
 app.whenReady().then(async () => {
   app.setLoginItemSettings({ openAtLogin: true, openAsHidden: true });
   startWorker();
+  startLocalExecutor();
   const online = await waitForWorker();
+  const localOnline = await waitForUrl(localExecutorUrl);
+  if (!localOnline) console.warn("Executor local não respondeu dentro do prazo.");
   if (!online) console.warn("Worker local não respondeu dentro do prazo.");
   createWindow();
   createTray();
@@ -130,4 +150,5 @@ app.on("before-quit", () => {
   quitting = true;
   globalShortcut.unregisterAll();
   if (worker && !worker.killed) worker.kill();
+  if (localExecutor && !localExecutor.killed) localExecutor.kill();
 });
