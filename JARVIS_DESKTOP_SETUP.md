@@ -21,7 +21,8 @@ When this project is moved to a Windows/macOS/Linux computer, the desktop layer 
 
 - `src/`: browser UI and orchestration
 - `worker/`: local Node/Playwright execution layer
-- `worker/server.mjs`: existing local HTTP executor on port 8787
+- `worker/server.mjs`: browser/research worker on port 8787
+- `worker/local-executor.mjs`: executor local de computador/arquivos no port 8788
 - `src/services/executor.ts`: frontend-to-worker client
 - `src/services/engine.ts`: task/financial decision logic
 
@@ -51,22 +52,29 @@ In another terminal:
 ```bash
 cd worker
 npm start
+
+Em outro terminal, para o executor local:
+
+```bash
+node worker/local-executor.mjs
 ```
 
 Then open the Vite address shown by the terminal.
 
 ## Planned desktop bridge
 
-The bridge must remain default-deny. It should expose only explicit actions such as:
+O executor local mantém três níveis: AUTOMÁTICO, CONFIRMAÇÃO e BLOQUEADO. Ele expõe apenas ações explícitas, como:
 
 - open an allowlisted URL
 - search the web
 - inspect a page
 - capture a page
 - open an allowlisted desktop application
-- read selected local folders
-- create/edit files only after approval
-- run predefined project commands
+- pesquisar e ler arquivos selecionados
+- criar, mover e renomear arquivos após aprovação
+- abrir aplicativos permitidos
+- fechar aplicativos após aprovação
+- executar comandos após aprovação, com bloqueios de segurança
 
 Never expose unrestricted arbitrary shell execution from a browser request.
 
