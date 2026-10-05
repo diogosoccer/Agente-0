@@ -130,13 +130,20 @@ async function runStep(step: MissionStep, deps: MissionRunnerDeps) {
     return deps.delegate(action.goal);
   }
   if (action.type === "open_url" || action.type === "inspect_site") {
-    throw new Error("Ação externa requer aprovação explícita.");
+    if (!deps.requestApproval) throw new Error("Ação externa requer aprovação explícita.");
+    const approval = await deps.requestApproval(step);
+    step.approvalId = approval.id;
+    step.approvalType = "browser";
+    step.status = "waiting_approval";
+    await saveStep(step);
+    return { waitingApproval: true, approvalId: approval.id };
   }
   if (action.type === "open_app") {
     const approval = deps.requestApproval
       ? await deps.requestApproval(step)
       : await requestLocalTaskApproval({ type: "open_app", value: action.app, label: action.label });
     step.approvalId = approval.id;
+    step.approvalType = "local_task";
     step.status = "waiting_approval";
     await saveStep(step);
     return { waitingApproval: true, approvalId: approval.id };
