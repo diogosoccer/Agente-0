@@ -242,7 +242,16 @@ export async function runMission(
       await saveMission(mission);
       await saveStep(step);
 
-      if (!(await verifyStep(step, result))) throw new Error("Verificação da etapa falhou.");
+      const verificationInput = {
+        specialist: step.specialistSummary,
+        result,
+      };
+      await auditExecution(step.id, "verification:input", "started", JSON.stringify(verificationInput).slice(0, 2000));
+      if (!(await verifyStep(step, result))) {
+        await auditExecution(step.id, "verification:result", "failed", "Resultado não apresentou evidência suficiente.");
+        throw new Error("Verificação da etapa falhou.");
+      }
+      await auditExecution(step.id, "verification:result", "success", "Resultado validado com evidência disponível.");
       step.status = "success";
       step.finishedAt = now();
       await saveStep(step);
