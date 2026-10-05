@@ -76,5 +76,29 @@ export async function generateLocalText(system, user, maxTokens = 900) {
   return text;
 }
 
+export async function generateLocalVision(system, user, imageBase64, maxTokens = 500) {
+  const status = await localAIStatus();
+  if (!status.available || !status.modelInstalled) throw new Error("IA local de visão indisponível.");
+  const model = status.model;
+  const response = await ollamaFetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      stream: false,
+      messages: [{ role: "system", content: system }, { role: "user", content: user, images: [imageBase64] }],
+      options: { num_predict: maxTokens, temperature: 0.2 }
+    })
+  }, 120000);
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(detail || "Falha no modelo local de visão.");
+  }
+  const data = await response.json();
+  const text = data?.message?.content?.trim();
+  if (!text) throw new Error("O modelo local não retornou uma análise visual.");
+  return text;
+}
+
 export async function ensureLocalModel() { return localAIStatus(); }
 export { OLLAMA_MODEL, OLLAMA_FALLBACK_MODEL, OLLAMA_URL };
