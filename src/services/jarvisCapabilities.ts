@@ -1,14 +1,11 @@
-export const JARVIS_CAPABILITIES=[
-  {id:"voice",name:"Voz",status:"browser",description:"Wake phrase e comandos por voz."},
-  {id:"vision",name:"Visão",status:"local",description:"Até 5 câmeras e visão local preparada."},
-  {id:"computer",name:"Computador",status:"guarded",description:"Ações aprovadas no navegador e no sistema."},
-  {id:"memory",name:"Memória",status:"planned",description:"Memória de sessão e memória persistente de projetos."},
-  {id:"research",name:"Pesquisa",status:"planned",description:"Pesquisa web, notícias e coleta estruturada."},
-  {id:"mail",name:"E-mail",status:"planned",description:"Leitura e resumo somente após conexão autorizada."},
-  {id:"builder",name:"Builder",status:"repo",description:"Criação e alteração de projetos com GitHub."},
-  {id:"business",name:"Negócios",status:"repo",description:"CRM, oportunidades, propostas e projetos."},
-  {id:"automation",name:"Automação",status:"guarded",description:"Tarefas longas com eventos e aprovação."},
-  {id:"offline",name:"Offline",status:"local",description:"Comandos locais que não dependem de internet."},
-  {id:"security",name:"Sentinel",status:"active",description:"Política default-deny e trilha de auditoria."},
-  {id:"profiles",name:"Perfis",status:"ui",description:"Personalidades e vozes de agentes configuráveis."}
-] as const;
+export type FileTaskType="list"|"read"|"create"|"write"|"mkdir"|"move";
+const base=()=> (localStorage.getItem("az:executorUrl")||"http://localhost:8787").replace(/\/$/,"");
+async function post(path:string,body:unknown){const r=await fetch(base()+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"Worker indisponível.");return d}
+export async function requestScreenCapture(){const id=crypto.randomUUID();const a=await post("/screen/approve",{id});return post("/screen/capture",{id,approvalToken:a.approvalToken})}
+export async function approveFileTask(type:FileTaskType,path:string,extra:Record<string,unknown>={}){const id=crypto.randomUUID();const a=await post("/files/approve",{id,type,path,...extra});return post("/files/execute",{id,type,path,...extra,approvalToken:a.approvalToken})}
+export async function scheduleSafeCommand(command:string,runAt:string){return post("/schedule",{id:crypto.randomUUID(),command,runAt})}
+export async function listSchedules(){const r=await fetch(base()+"/schedules");if(!r.ok)throw new Error("Não foi possível listar agendamentos.");return r.json()}
+export function speakJarvis(text:string){if(!("speechSynthesis"in window))return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="pt-BR";u.rate=.95;u.pitch=.9;window.speechSynthesis.speak(u)}
+export async function notifyJarvis(title:string,body:string){if(!("Notification"in window))return false;if(Notification.permission==="default")await Notification.requestPermission();if(Notification.permission==="granted"){new Notification(title,{body});return true}return false}
+export function listenOnce():Promise<string>{return new Promise((resolve,reject)=>{const SR=(window as any).SpeechRecognition||(window as any).webkitSpeechRecognition;if(!SR)return reject(new Error("Reconhecimento de voz não suportado."));const r=new SR();r.lang="pt-BR";r.interimResults=false;r.continuous=false;r.onresult=(e:any)=>resolve(String(e.results?.[0]?.[0]?.transcript||"").trim());r.onerror=()=>reject(new Error("Não foi possível ouvir o comando."));r.start()})}
+export const JARVIS_CAPABILITIES=[{id:"voice",name:"Voz",status:"active"},{id:"tts",name:"Resposta por voz",status:"active"},{id:"screen",name:"Visão da tela",status:"guarded"},{id:"web",name:"Navegação web",status:"guarded"},{id:"notifications",name:"Notificações",status:"active"},{id:"schedule",name:"Agendamento",status:"active"},{id:"files",name:"Arquivos",status:"guarded"},{id:"security",name:"Sentinel",status:"active"}] as const;
