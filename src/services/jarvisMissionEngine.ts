@@ -211,7 +211,7 @@ export async function runMission(
     await auditExecution(step.id, "step:" + step.action.type, "started", step.action.label);
 
     try {
-      const result = await runStep(step, deps, specialistResult);
+      const result = await runStep(step, deps);
       if (result && typeof result === "object" && "waitingApproval" in result) {
         mission.status = "waiting_approval";
         mission.updatedAt = now();
