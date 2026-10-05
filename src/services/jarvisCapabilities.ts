@@ -5,6 +5,10 @@ export async function requestScreenCapture(){const id=crypto.randomUUID();const 
 export async function approveFileTask(type:FileTaskType,path:string,extra:Record<string,unknown>={}){const id=crypto.randomUUID();const a=await post("/files/approve",{id,type,path,...extra});return post("/files/execute",{id,type,path,...extra,approvalToken:a.approvalToken})}
 export async function scheduleSafeCommand(command:string,runAt:string){return post("/schedule",{id:crypto.randomUUID(),command,runAt})}
 export async function listSchedules(){const r=await fetch(base()+"/schedules");if(!r.ok)throw new Error("Não foi possível listar agendamentos.");return r.json()}
+export async function analyzeVision(imageBase64:string, question="O que há de relevante nesta imagem?"){
+  return post("/vision/analyze",{imageBase64,question});
+}
+
 export function speakJarvis(text:string){if(!("speechSynthesis"in window))return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="pt-BR";u.rate=.95;u.pitch=.9;window.speechSynthesis.speak(u)}
 export async function notifyJarvis(title:string,body:string){if(!("Notification"in window))return false;if(Notification.permission==="default")await Notification.requestPermission();if(Notification.permission==="granted"){new Notification(title,{body});return true}return false}
 export function listenOnce():Promise<string>{return new Promise((resolve,reject)=>{const SR=(window as any).SpeechRecognition||(window as any).webkitSpeechRecognition;if(!SR)return reject(new Error("Reconhecimento de voz não suportado."));const r=new SR();r.lang="pt-BR";r.interimResults=false;r.continuous=false;r.onresult=(e:any)=>resolve(String(e.results?.[0]?.[0]?.transcript||"").trim());r.onerror=()=>reject(new Error("Não foi possível ouvir o comando."));r.start()})}
