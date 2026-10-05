@@ -117,6 +117,8 @@ async function verifyStep(step: MissionStep, result: unknown) {
   return true;
 }
 
+function dependenciesSatisfied(step: MissionStep, steps: MissionStep[]) { return step.dependsOn.every(dep => { const byIndex = steps.find(s => String(s.index) === dep); return Boolean(byIndex && byIndex.status === "success"); }); }
+
 async function runStep(step: MissionStep, deps: MissionRunnerDeps) {
   const action = step.action;
   if (action.type === "navigate") {
@@ -188,6 +190,7 @@ export async function runMission(
   for (let i = mission.currentStep; i < steps.length; i++) {
     const step = steps[i];
     mission.currentStep = i;
+    if (!dependenciesSatisfied(step, steps)) { step.status = "skipped"; step.error = "Dependência anterior não concluída."; await saveStep(step); mission.status = "failed"; mission.error = step.error; mission.updatedAt = now(); await saveMission(mission); await auditExecution(step.id, "step:" + step.action.type, "failed", step.error); return { mission, steps }; }
     step.status = "running";
     step.attempts += 1;
     step.startedAt = now();
@@ -344,4 +347,18 @@ export async function createAndRunMission(
   for (const step of steps) await saveStep(step);
   await auditExecution(mission.id, "mission:created", "started", plan.summary);
   return runMission(mission, steps, deps);
+}
+
+export async function cancelMission(missionId: string) {
+  const missions = await listJarvisRecords("mission", 100);
+  const row = missions.find(r => r.id === missionId);
+  if (!row) throw new Error("Missão não encontrada.");
+  const mission = row.data as unknown as JarvisMission;
+  if (mission.status === "completed" || mission.status === "failed" || mission.status === "cancelled") return mission;
+  mission.status = "cancelled";
+  mission.updatedAt = now();
+  mission.error = "Missão cancelada pelo usuário.";
+  await saveMission(mission);
+  await auditExecution(mission.id, "mission:cancelled", "blocked", mission.error);
+  return mission;
 }
