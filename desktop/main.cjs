@@ -59,12 +59,14 @@ function hideJarvis() {
 }
 
 function createWindow() {
+  const loginState = app.getLoginItemSettings();
+  const launchHidden = Boolean(loginState.wasOpenedAtLogin);
   win = new BrowserWindow({
     width: 1440,
     height: 920,
     minWidth: 980,
     minHeight: 680,
-    show: true,
+    show: !launchHidden,
     backgroundColor: "#08090c",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
