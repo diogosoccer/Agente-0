@@ -160,7 +160,7 @@ export function JarvisMissionControl({ go }: { go: (p: string) => void }) {
               <div key={step.id}>
                 <i>{String(step.index + 1).padStart(2, "0")}</i>
                 <span>{step.action.label}</span>
-                <small>{statusLabel(step.status)} · {step.attempts}/{step.maxAttempts}</small>
+                <small>{step.agent.toUpperCase()} · {statusLabel(step.status)} · RISCO {step.risk.toUpperCase()} · {step.attempts}/{step.maxAttempts}</small>
               </div>
             )) : (
               <div className="miniCard">
