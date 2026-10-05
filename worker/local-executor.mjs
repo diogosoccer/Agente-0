@@ -94,6 +94,9 @@ async function searchFiles(root, query, limit = 50) {
 }
 
 async function handle(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "http://localhost:5173");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   const url = new URL(req.url || "/", "http://127.0.0.1");
   if (req.method === "OPTIONS") return json(res, 204, {});
   if (req.method === "GET" && url.pathname === "/health") {
