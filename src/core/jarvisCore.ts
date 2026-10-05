@@ -1,6 +1,6 @@
 import { multiAgentRuntime } from "../services/agentRuntime";
 import { agentOrchestrator, AgentTask } from "../services/agentOrchestrator";
-import { rememberIfImportant, recallMemoriesDeep, type JarvisImportantMemory } from "../services/jarvisMemory";
+import { rememberMissionOutcome, recallMemoriesDeep, type JarvisImportantMemory } from "../services/jarvisMemory";
 import { createActionPlanWithAI, type JarvisActionPlan } from "../services/jarvisActionPlan";
 import { listJarvisRecords, upsertJarvisRecord } from "../services/jarvisPersistence";
 import { createOperationId, withTimeout } from "./stability";
@@ -58,7 +58,7 @@ export class JarvisCore{
     const finished=await waitForMissionTask(task.id);if(finished.status==="error")throw new Error(finished.error||"Agente falhou.");
     mission.status="verifying";mission.updatedAt=Date.now();persist(mission);emit(mission,"verifying","Verificando o resultado.");return finished;
    },cleanGoal,{maxAttempts:3,verify:task=>verifyResult(cleanGoal,{success:task.status==="done",status:task.status,output:task.result,evidence:task.result?[task.result]:[]}),onRetry:async(_,reason)=>{mission.status="recovering";mission.error=String(reason);mission.updatedAt=Date.now();persist(mission);emit(mission,"recovering","Recuperação acionada: "+String(reason))}});
-   const finished=execution.result;mission.status="done";mission.result=finished.result||"Missão concluída sem resumo textual.";mission.error=undefined;mission.updatedAt=Date.now();persist(mission);emit(mission,"done","Missão concluída e validada.");rememberIfImportant("Missão concluída: "+cleanGoal+". Resultado: "+mission.result,"system");
+   const finished=execution.result;mission.status="done";mission.result=finished.result||"Missão concluída sem resumo textual.";mission.error=undefined;mission.updatedAt=Date.now();persist(mission);emit(mission,"done","Missão concluída e validada.");rememberMissionOutcome(cleanGoal, mission.result);
    return{mission,summary:mission.result,delegated:Boolean(mission.taskId),attempts:mission.attempts,plan:plan??undefined,memories};
   }catch(error){mission.status="error";mission.error=error instanceof Error?error.message:"Falha desconhecida";mission.updatedAt=Date.now();persist(mission);emit(mission,"error",mission.error);throw error}
  }
