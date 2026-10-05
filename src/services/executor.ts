@@ -107,7 +107,10 @@ export async function openLocalFile(baseUrl: string, path: string) {
 export type BrowserAction = "navigate" | "click" | "fill" | "press" | "extract" | "screenshot";
 export async function runBrowserAction(baseUrl:string, task:{id:string;url:string;action:BrowserAction;selector?:string;value?:string}){
   const root=baseUrl.replace(/\/$/,"");
-  const response=await fetch(root+"/browser/action",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(task),signal:AbortSignal.timeout(30000)});
+  const approval=await fetch(root+"/browser/approve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(task),signal:AbortSignal.timeout(5000)});
+  const approved=await approval.json().catch(()=>({}));
+  if(!approval.ok||typeof approved.approvalToken!=="string")throw new Error(approved?.error||"Worker recusou a automação web.");
+  const response=await fetch(root+"/browser/action",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...task,approvalToken:approved.approvalToken}),signal:AbortSignal.timeout(30000)});
   const data=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(data?.error||"Falha na automação web.");
   return data;
