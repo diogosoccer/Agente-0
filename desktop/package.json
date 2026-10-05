@@ -3,11 +3,50 @@
   "private": true,
   "version": "0.1.0",
   "main": "main.cjs",
-  "description": "Desktop shell do Agente Zero",
+  "description": "Agente Zero Desktop para Windows",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build": "electron-builder --win nsis --x64"
+  },
+  "build": {
+    "appId": "com.agentezero.desktop",
+    "productName": "Agente Zero",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "package.json",
+      "../dist/**/*",
+      "../worker/**/*"
+    ],
+    "extraMetadata": {
+      "main": "main.cjs"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Agente-Zero-Setup-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Agente Zero",
+      "runAfterFinish": true
+    }
   },
   "devDependencies": {
-    "electron": "latest"
+    "electron": "latest",
+    "electron-builder": "latest"
   }
 }
