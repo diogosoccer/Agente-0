@@ -47,10 +47,11 @@ export async function executeLocalAction(action: LocalAction, approvalToken?: st
   return post("/action", { id, ...action, approvalToken });
 }
 
-export async function approveAndExecuteLocalAction(action: LocalAction, _approvalToken: string, id: string) {
+export async function approveAndExecuteLocalAction(action: LocalAction, approvalId: string, id: string) {
   const permission = (await getPermission(action.action)).permission;
   if (permission === "blocked") throw new Error("Ação bloqueada pela política de segurança.");
   if (permission === "automatic") return post("/action", { id, ...action });
+  if (!approvalId.trim()) throw new Error("Aprovação explícita ausente para a ação local.");
   const approval = await post("/approve", { id, ...action });
   if (typeof approval.approvalToken !== "string") throw new Error("Executor local não gerou token de execução.");
   return post("/action", { id, ...action, approvalToken: approval.approvalToken });
