@@ -85,13 +85,13 @@ app.post("/plan",async(req,res)=>{
   const input=typeof req.body?.input==="string"?req.body.input.trim():"";
   if(!input)return res.status(400).json({error:"input obrigatório"});
   try{
-    const localRaw=await generateBestLocalText("Você é o Action Planner do JARVIS. Retorne JSON com plan e ações permitidas: navigate, worker_health, research_web, open_url, inspect_site, open_app, open_file, run_command, delegate. Para ações locais, use somente comandos seguros da política: system_info, git_status, node_version, npm_version, pwd, list_files. Seja conservador: ações externas exigem aprovação.",input,700);
+    const localRaw=await generateBestLocalText("Você é o Action Planner do JARVIS. Retorne JSON com plan e ações permitidas: navigate, worker_health, research_web, open_url, inspect_site, browser_action, open_app, open_file, run_command, delegate. Para ações locais, use somente comandos seguros da política: system_info, git_status, node_version, npm_version, pwd, list_files. Seja conservador: ações externas exigem aprovação.",input,700);
     if(localRaw){
       try {
         const parsed=JSON.parse(localRaw.replace(/^\`\`\`json\s*|\s*\`\`\`$/g,"")); const plan=parsed?.plan;
-        const allowed=new Set(["navigate","worker_health","research_web","open_url","inspect_site","open_app","open_file","run_command","delegate"]);
+        const allowed=new Set(["navigate","worker_health","research_web","open_url","inspect_site","browser_action","open_app","open_file","run_command","delegate"]);
         if(plan&&Array.isArray(plan.actions)&&plan.actions.length<=8&&plan.actions.every(a=>allowed.has(a?.type))){
-          for(const action of plan.actions) if(action.type==="open_url"||action.type==="inspect_site"||action.type==="open_app"||action.type==="open_file"||action.type==="run_command"){const url=new URL(String(action.url||""));if(!["http:","https:"].includes(url.protocol))throw new Error("URL inválida.");action.requiresApproval=true;}
+          for(const action of plan.actions) if(action.type==="open_url"||action.type==="inspect_site"||action.type==="browser_action"||action.type==="open_app"||action.type==="open_file"||action.type==="run_command"){const url=new URL(String(action.url||""));if(!["http:","https:"].includes(url.protocol))throw new Error("URL inválida.");action.requiresApproval=true;}
           plan.id=typeof plan.id==="string"?plan.id:randomUUID(); plan.confidence=Math.max(0,Math.min(1,Number(plan.confidence)||0));
           plan.requiresApproval=Boolean(plan.requiresApproval)||plan.actions.some(a=>["open_url","inspect_site","open_app","open_file","run_command"].includes(a.type));
           return res.json({plan});
