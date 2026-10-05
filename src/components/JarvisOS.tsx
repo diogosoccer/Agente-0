@@ -1,6 +1,6 @@
 import{useEffect,useRef,useState}from"react";
 import{Activity,BrainCircuit,Camera,ChevronRight,Eye,LockKeyhole,Mic,Music2,Network,Radio,Shield,Terminal,UserRound,Volume2,X,Zap}from"lucide-react";
-import{createActionPlanWithAI,type JarvisActionPlan}from"../services/jarvisActionPlan";
+import{createActionPlanWithAI,type JarvisActionPlan}from"../services/jarvisActionPlan";import{createAndRunMission}from"../services/jarvisMissionEngine";
 import{multiAgentRuntime}from"../services/agentRuntime";
 import{discoverUnknown}from"../services/jarvisUnknown";
 import{studyCapabilityGap}from"../services/jarvisEvolution";
@@ -61,12 +61,40 @@ export function JarvisOS({go,addApproval}:Props){
   const p=await createActionPlanWithAI(input,base);if(p)updateMission(mission.id,{status:p.requiresApproval?"awaiting_approval":"executing",result:p.summary});
   if(/(procure|pesquise|buscar|ache|encontre).*(empresa|empresas|comercio|comércios|comercio|negócio|negocios|negócios).*(sem site|sem website|que não tem site|que nao tem site)/i.test(input)){const match=input.match(/(?:em|na|no|de)\s+([A-Za-zÀ-ÿ\s-]{3,60})$/i);const location=match?.[1]?.trim()||"Itabira, MG";try{push("Pesquisando oportunidades reais na web em "+location+"...","RESEARCH");setStatus("RESEARCHING");const data=await researchOpportunities(location);const saved=saveOpportunityCandidates(data.candidates);push("Radar encontrou "+data.candidates.length+" candidatos e salvou "+saved+" oportunidades.","RESEARCH");push(data.methodology,"RESEARCH");speak("Encontrei "+data.candidates.length+" oportunidades e salvei as mais relevantes.");go("/advanced");setStatus("READY");setThinking(false);return}catch(error){push(error instanceof Error?error.message:"Falha no radar.","GUARD")}}if(!p){updateMission(mission.id,{status:"blocked",result:"Capacidade ainda não disponível; proposta de evolução criada."});const gap=studyCapabilityGap(input);setStatus("CAPABILITY GAP");push("Não consigo executar isso ainda. Estudei como essa capacidade poderia ser adicionada e deixei uma proposta aguardando sua permissão.","EVOLUTION");push(gap.title+" — "+gap.proposedChange,"EVOLUTION");go("/evolucao");setThinking(false);return}
   setPlan(p);push(p.summary,"PLAN");setStatus(p.requiresApproval?"AWAITING APPROVAL":"EXECUTING");
-  for(const a of p.actions){if(a.type==="navigate"){go(a.path);push("Navegando para "+a.path,"ACTION")}
-   if(a.type==="worker_health"){try{const h=await fetch(base+"/health",{signal:AbortSignal.timeout(3000)});const d=await h.json();push("Worker conectado: "+d.status,"ACTION")}catch{push("Worker local indisponível.","GUARD")}}
-   if(a.type==="research_web"){updateMission(mission.id,{status:"researching"});await research(a.query);push("Pesquisa concluída: "+a.label,"RESEARCH");updateMission(mission.id,{status:"verifying"})}
-   if(a.type==="delegate"){const t=multiAgentRuntime.submit(a.goal);push("Missão delegada ao agente runtime: "+t.id.slice(0,8),"AGENT");updateMission(mission.id,{status:"verifying"})}
-   if(a.type==="open_url"||a.type==="inspect_site"){updateMission(mission.id,{status:"awaiting_approval"});addApproval({id:crypto.randomUUID(),type:"execução de navegador",title:a.label,description:"Ação externa preparada pelo Action Planner. Requer aprovação explícita.",createdAt:new Date().toISOString(),status:"pending",execution:{type:a.type,url:a.url}});push("Ação externa bloqueada até aprovação.","GUARD");go("/aprovacoes")}
-  }if(!p.requiresApproval){updateMission(mission.id,{status:"done",result:p.summary});push("Missão verificada e concluída.","MISSION")}setStatus(p.requiresApproval?"AWAITING APPROVAL":"READY");setThinking(false)
+  try {
+    const result = await createAndRunMission(p,{
+      navigate: go,
+      research: async (query)=>{ updateMission(mission.id,{status:"researching"}); const data=await researchOpportunities(query); return data; },
+      delegate: async (goal)=>multiAgentRuntime.submit(goal),
+      requestApproval: async (step)=>{
+        const a:any = step.action;
+        const execution =
+          a.type==="open_url"||a.type==="inspect_site"
+            ? {type:a.type,url:a.url}
+            : a.type==="open_app"
+              ? {type:"computer",action:"open_app",value:a.app}
+              : a.type==="open_file"
+                ? {type:"local_task",task:"open_file",value:a.path}
+                : {type:"local_task",task:"run_command",value:a.command};
+        const approval={id:crypto.randomUUID(),type:"mission_step",title:a.label,description:"Etapa "+(step.index+1)+" de "+p.actions.length+" aguardando aprovação explícita.",createdAt:new Date().toISOString(),status:"pending",execution,missionId:step.missionId,stepId:step.id};
+        addApproval(approval);
+        return {id:approval.id};
+      }
+    });
+    updateMission(mission.id,{
+      status:result.mission.status==="completed"?"done":result.mission.status==="waiting_approval"?"awaiting_approval":result.mission.status==="failed"?"blocked":"executing",
+      result:result.mission.error||result.mission.summary
+    });
+    push(result.mission.status==="completed"?"Missão multi-etapas concluída e verificada.":result.mission.status==="waiting_approval"?"Missão pausada em uma etapa que exige aprovação.":"Motor de missão executado: "+result.mission.status,"MISSION");
+    if(result.mission.status==="waiting_approval") go("/aprovacoes");
+    setStatus(result.mission.status==="waiting_approval"?"AWAITING APPROVAL":result.mission.status==="completed"?"READY":"EXECUTING");
+  } catch(error) {
+    const message=error instanceof Error?error.message:"Falha no motor de missões.";
+    updateMission(mission.id,{status:"blocked",result:message});
+    push(message,"GUARD");
+    setStatus("ERROR");
+  }
+  setThinking(false)
  };
  const unknown=discoverUnknown();
  return (<div className="jarvisOS"><div className="jarvisOSNoise"/>{booting ? (<div className="jarvisBoot"><div className="jarvisBootCore"><div className="bootRing r1"/><div className="bootRing r2"/><div className="bootCore"><BrainCircuit size={30}/></div></div><span className="eyebrow">AGENTE ZERO // PERSONAL SYSTEM</span><h1>INICIALIZANDO J.A.R.V.I.S.</h1><p>Construído para esta máquina. Construído para você.</p><div className="bootSteps"><span>CORE LINK <b>OK</b></span><span>MEMORY <b>READY</b></span><span>GUARD <b>ACTIVE</b></span><span>VOICE <b>STANDBY</b></span></div><small>ESTABELECENDO SESSÃO LOCAL...</small></div>) : null}
