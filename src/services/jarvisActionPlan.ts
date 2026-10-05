@@ -4,6 +4,9 @@ export type JarvisPlanAction =
   | { type: "research_web"; query: string; label: string }
   | { type: "open_url"; url: string; label: string; requiresApproval: true }
   | { type: "inspect_site"; url: string; label: string; requiresApproval: true }
+  | { type: "open_app"; app: string; label: string; requiresApproval: true }
+  | { type: "open_file"; path: string; label: string; requiresApproval: true }
+  | { type: "run_command"; command: "system_info" | "git_status" | "node_version" | "npm_version" | "pwd" | "list_files"; label: string; requiresApproval: true }
   | { type: "delegate"; goal: string; label: string };
 
 export type JarvisActionPlan = {
