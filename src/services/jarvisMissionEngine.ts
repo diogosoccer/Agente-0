@@ -6,6 +6,7 @@ import { executeApprovedLocalTask, requestLocalTaskApproval, type LocalTask } fr
 import { listJarvisRecords, upsertJarvisRecord } from "./jarvisPersistence";
 import { chooseRecovery } from "./jarvisRecovery";
 import { evaluatePermission, type PermissionDecision } from "./jarvisPermissions";
+import { verifyLocalAction, type LocalAction } from "./localExecutor";
 
 export type MissionStatus =
   | "pending" | "running" | "waiting_approval" | "verifying"
@@ -122,6 +123,11 @@ export function buildMissionFromPlan(plan: JarvisActionPlan): {
 
 async function verifyStep(step: MissionStep, result: unknown) {
   if (result === undefined || result === null) return false;
+  const localAction = localActionForVerification(step.action);
+  if (localAction) {
+    const verification = await verifyLocalAction(localAction);
+    if (!verification.verified) return false;
+  }
   if (typeof result === "object" && result !== null && "ok" in result && (result as {ok?: boolean}).ok === false) return false;
   if (step.action.type === "browser_action") {
     const r = result as Record<string, unknown>;
@@ -133,6 +139,19 @@ async function verifyStep(step: MissionStep, result: unknown) {
     if (step.action.action === "click" || step.action.action === "navigate") return typeof r.url === "string" && r.url.length > 0;
   }
   return true;
+}
+
+function localActionForVerification(action: JarvisPlanAction): LocalAction | null {
+  switch (action.type) {
+    case "open_app": return { action: "open_app", app: action.app };
+    case "close_app": return { action: "close_app", app: action.app };
+    case "file_search": return { action: "file_search", root: action.root, query: action.query, limit: action.limit };
+    case "file_read": return { action: "file_read", path: action.path };
+    case "file_create": return { action: "file_create", path: action.path, content: action.content || "" };
+    case "file_move": return { action: "file_move", source: action.source, destination: action.destination };
+    case "file_rename": return { action: "file_rename", source: action.source, name: action.name };
+    default: return null;
+  }
 }
 
 function dependenciesSatisfied(step: MissionStep, steps: MissionStep[]) { return step.dependsOn.every(dep => { const byIndex = steps.find(s => String(s.index) === dep); return Boolean(byIndex && byIndex.status === "success"); }); }
