@@ -14,6 +14,7 @@ export type JarvisPlanAction =
   | { type: "file_move"; source: string; destination: string; label: string; requiresApproval: true }
   | { type: "file_rename"; source: string; name: string; label: string; requiresApproval: true }
   | { type: "run_command"; command: "system_info" | "git_status" | "node_version" | "npm_version" | "pwd" | "list_files"; label: string; requiresApproval: true }
+  | { type: "shell_command"; command: string; label: string; requiresApproval: true }
   | { type: "delegate"; goal: string; label: string };
 
 export type JarvisActionPlan = {
@@ -62,6 +63,11 @@ function enrichPersonalPlan(plan: JarvisActionPlan, input: string): JarvisAction
   const actions = [...plan.actions];
 
   const add = (action: JarvisPlanAction) => actions.push(action);
+
+  const shell = input.match(/(?:execute|executar|rode|rodar|run)\\s+(?:o\\s+)?comando\\s+["“](.+?)["”]\\s*$/i);
+  if (shell && !actions.some(a => a.type === "shell_command")) {
+    add({ type: "shell_command", command: shell[1].trim(), label: "Executar comando solicitado", requiresApproval: true });
+  }
 
   const appOpen = text.match(/(?:abra|abrir|inicie|iniciar)\s+(?:o\s+|a\s+)?(chrome|google chrome|edge|firefox|calculadora|bloco de notas|explorador)/i);
   if (appOpen && !actions.some(a => a.type === "open_app")) {
