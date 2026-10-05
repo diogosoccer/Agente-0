@@ -10,7 +10,9 @@
     "desktop": "npm --prefix desktop start",
     "desktop:install": "npm --prefix desktop install",
     "desktop:build": "npm run build",
-    "desktop:package": "npm run build && npm --prefix desktop install && npm --prefix desktop run build"
+    "desktop:package": "npm run build && npm --prefix desktop install && npm --prefix desktop run build",
+    "test:contracts": "node scripts/validate-contracts.mjs",
+    "verify": "npm run build && npm run test:contracts"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
